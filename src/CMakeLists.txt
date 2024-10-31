@@ -11,10 +11,6 @@ set(CMAKE_CXX_STANDARD 17)
 
 set(PICO_BOARD pico_w)
 
-if (PICO_SDK_VERSION_STRING VERSION_LESS "2.0.0")
-    message(FATAL_ERROR "Raspberry Pi Pico SDK version 2.0.0 (or later) required. Your version is ${PICO_SDK_VERSION_STRING}")
-endif()
-
 # If you want debug output from USB (pass -DPICO_STDIO_USB=1) this ensures you don't lose any debug output while USB is set up
 if (NOT DEFINED PICO_STDIO_USB_CONNECT_WAIT_TIMEOUT_MS)
     set(PICO_STDIO_USB_CONNECT_WAIT_TIMEOUT_MS 3000)
@@ -33,3 +29,5 @@ endif()
 
 # Hardware-specific examples in subdirectories:
 add_subdirectory(accelerometer)
+add_subdirectory(wifi)
+add_subdirectory(dashboard)
