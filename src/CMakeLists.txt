@@ -31,3 +31,13 @@ endif()
 add_subdirectory(accelerometer)
 add_subdirectory(wifi)
 add_subdirectory(dashboard)
+
+if (NOT FREERTOS_KERNEL_PATH AND NOT DEFINED ENV{FREERTOS_KERNEL_PATH})
+    message("Skipping Pico W FreeRTOS examples as FREERTOS_KERNEL_PATH not defined")
+else()
+    include(FreeRTOS_Kernel_import.cmake)
+
+    add_subdirectory(motor)
+    add_subdirectory(main_wheel_encoder)
+    add_subdirectory(main_ultrasonic_sensor)
+endif() 
