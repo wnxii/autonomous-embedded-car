@@ -27,7 +27,7 @@ static void send_message(int socket, char *msg) {
   }
 }
 
-static int handle_single_command(int conn_sock) {
+/* static int handle_single_command(int conn_sock) {
   // 128 bytes buffer --> change this to a larger value if you want to send more data
   char buffer[128];
   int done = 0;
@@ -50,7 +50,49 @@ static int handle_single_command(int conn_sock) {
   }
 
   return 0;
+} */
+
+static int handle_single_command(int conn_sock) {
+    // 512 bytes buffer for message reception
+    char buffer[512];
+    int done = 0;
+
+    // Loop to receive data in chunks
+    while (done < sizeof(buffer)) {
+        // Receive data into the buffer
+        int sent = recv(conn_sock, buffer + done, sizeof(buffer) - done - 1, 0);
+        
+        // Check if data was received
+        if (sent > 0) {
+            done += sent;
+            buffer[done] = '\0'; // Null-terminate the buffer
+
+            // Look for newline delimiter to identify end of message
+            char *newline_pos = strchr(buffer, '\n');
+            if (newline_pos) {
+                // Print the message up to the newline character
+                printf("%s\n", buffer);
+
+                // Reset buffer and done counter for the next message
+                memset(buffer, 0, sizeof(buffer));
+                done = 0;
+            }
+        } 
+        else if (sent == 0) {
+            // Connection closed by client
+            printf("Client disconnected.\n");
+            return -1;
+        } 
+        else {
+            // Error in receiving data
+            printf("Error receiving data: %d\n", errno);
+            return -1;
+        }
+    }
+
+    return 0;
 }
+
 
 static void handle_connection(int conn_sock) {
   while (!handle_single_command(conn_sock))

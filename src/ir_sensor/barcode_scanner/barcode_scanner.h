@@ -1,5 +1,10 @@
 #ifndef barcode_scanner_H
 #define barcode_scanner_H
+
+#include "FreeRTOS.h"
+#include "queue.h" // Include FreeRTOS queue handling for QueueHandle_t
+
+
 /* Macros */
 // Barcode 39
 #define TOTAL_CHAR 44                     // Total number of characters encoded by Barcode 39 representation
@@ -23,8 +28,10 @@ void vDisplayTask(void *pvParameters);
 void vInitializeTasks(void);
 void init_button();
 
-extern char barcode_char;              // Character variable to store scanned and parsed barcode character
-extern volatile bool scanning_allowed; // Boolean to indicate when scanning is allowed
-extern bool start_scan;                // Boolean to indicate barcode is scanning
+// extern char barcode_char;              // Character variable to store scanned and parsed barcode character
+// extern volatile bool scanning_allowed; // Boolean to indicate when scanning is allowed
+// extern bool start_scan;                // Boolean to indicate barcode is scanning
+// External queue declaration for server-bound messages
+extern QueueHandle_t xServerQueue;
 
 #endif
