@@ -6,7 +6,7 @@
 #include "queue.h"
 #include "semphr.h"
 
-#define ENCODER_PIN 2  // GPIO pin for the encoder
+#define ENCODER_PIN 4 // GPIO pin for the encoder
 #define WHEEL_CIRCUMFERENCE 20.0f  // Wheel circumference in cm
 #define PULSES_PER_REVOLUTION 20  // Number of pulses per wheel revolution
 
