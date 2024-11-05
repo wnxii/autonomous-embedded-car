@@ -3,16 +3,34 @@
 
 #include <stdint.h>
 
-// Initializes the wheel encoder and sets up the necessary GPIO and FreeRTOS tasks.
-void init_wheel_encoder();
+// Pin definitions
+#define LEFT_ENCODER_PIN 4 // GPIO pin for the encoder
+#define RIGHT_ENCODER_PIN 5 // GPIO pin for the encoder
 
-// Returns the total distance traveled based on encoder pulses.
-float get_distance();
+#define WHEEL_CIRCUMFERENCE 20.0f  // Wheel circumference in cm
+#define PULSES_PER_REVOLUTION 40  // Number of pulses per wheel revolution
+// #define ENCODER_CIRCUMFERENCE 8.5
+// #define SCALING_FACTOR (WHEEL_CIRCUMFERENCE / ENCODER_CIRCUMFERENCE)
 
-// Returns the current speed of the wheel based on encoder data.
-float get_speed();
+// Encoder data structure
+typedef struct {
+    uint32_t pulse_count;
+    uint64_t timestamp;
+} EncoderData;
 
-// Resets the encoder data (e.g., pulse count and timestamp).
-void reset_encoder();
+// Encoder and GPIO initializations
+void init_wheel_encoders();
+
+// Distance measurement functions for each encoder
+float get_left_distance();
+float get_right_distance();
+
+// Speed measurement functions for each encoder
+float get_left_speed();
+float get_right_speed();
+
+// Encoder reset functions for each encoder
+void reset_left_encoder();
+void reset_right_encoder();
 
 #endif
