@@ -8,4 +8,8 @@
 #define MOVING_AVG_WINDOW 2         // Define window size for moving average
 #define CONTRAST_THRESHOLD 1.4f     // Contrast threshold in volts for detecting black vs. white
 
+void init_line_sensor();
+
+extern volatile bool black_line_detected; // Flag to indicate if the line is detected
+
 #endif
