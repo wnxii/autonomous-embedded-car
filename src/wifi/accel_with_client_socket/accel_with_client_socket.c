@@ -49,7 +49,7 @@
 #define TEST_TASK_PRIORITY (tskIDLE_PRIORITY + 2UL)
 #define WIFI_SSID "yongjun"          // WiFi network name
 #define WIFI_PASSWORD "pewpew1234"      // WiFi password
-#define SERVER_IP "172.20.10.3"          // Remote server IP address
+#define SERVER_IP "172.20.10.9"          // Remote server IP address
 #define SERVER_PORT 12345     // Remote server port number
 
 /**
@@ -65,22 +65,48 @@ void i2c_init_setup() {
 }
 
 /**
- * Sends a message to the server over TCP socket.
- * 
+ * Sends a message to the server over TCP socket with non-blocking behavior
+ * and proper error handling.
+ *
  * @param socket Socket file descriptor
  * @param msg Message to send
+ * @return 0 on success, -1 on failure
  */
-void send_message(int socket, const char *msg) {
+int send_message(int socket, const char *msg) {
     int msg_len = strlen(msg);
     int done = 0;
+    int flags = MSG_DONTWAIT;  // Make send non-blocking
+    
+    // Set socket to non-blocking mode
+    int socket_flags = fcntl(socket, F_GETFL, 0);
+    fcntl(socket, F_SETFL, socket_flags | O_NONBLOCK);
+    
     while (done < msg_len) {
-        int msg_sent = send(socket, msg + done, msg_len - done, 0);
-        if (msg_sent <= 0) {
+        printf("Sending message: %s\n", msg + done);
+        int msg_sent = send(socket, msg + done, msg_len - done, flags);
+        
+        if (msg_sent < 0) {
+            if (errno == EAGAIN || errno == EWOULDBLOCK) {
+                // Socket buffer is full, try again after a short delay
+                printf("Socket buffer full, retrying...\n");
+                sleep_ms(1);
+                continue;
+            } else if (errno == EPIPE || errno == ECONNRESET) {
+                printf("Connection closed by peer\n");
+                return -1;
+            } else {
+                printf("Send error: %d\n", errno);
+                return -1;
+            }
+        } else if (msg_sent == 0) {
             printf("Connection closed\n");
-            return;
+            return -1;
         }
+        
         done += msg_sent;
     }
+    
+    return 0;
 }
 
 /**
@@ -206,40 +232,26 @@ int map_angle_to_control(float angle, float threshold) {
     }
 }
 
-/**
- * Sends direction and intensity commands to the server.
- * 
- * @param sock Socket connection to server
- * @param speed Forward/backward speed (-100 to 100)
- * @param steering Left/right steering intensity (-100 to 100)
- */
 void send_direction_and_intensity(int sock, int speed, int steering) {
     char msg[150];
-
-    // Handle forward/backward movement
-    if (speed > 0) {
-        snprintf(msg, 150, "[Forward] at Speed %d\n", speed);
-        printf("%s", msg);
-        send_message(sock, msg);
-    } else if (speed < 0) {
-        snprintf(msg, 150, "[Backward] at Speed %d\n", -speed);
-        printf("%s", msg);
-        send_message(sock, msg);
-    } else {
-        printf("Speed: Neutral\n");
-    }
-
-    // Handle left/right steering
-    if (steering > 0) {
-        snprintf(msg, 150, "[Right] at Intensity %d\n", steering);
-        printf("%s", msg);
-        send_message(sock, msg);
-    } else if (steering < 0) {
-        snprintf(msg, 150, "[Left] at Intensity %d\n", -steering);
-        printf("%s", msg);
-        send_message(sock, msg);
-    } else {
-        printf("Steering: Neutral\n");
+    const char *speed_dir = (speed > 0) ? "Forward" : (speed < 0) ? "Backward" : "Neutral";
+    const char *steer_dir = (steering > 0) ? "Right" : (steering < 0) ? "Left" : "Center";
+    
+    // Create single message combining both speed and steering
+    snprintf(msg, 150, "[%s-%s] Speed: %d, Steering: %d\n", 
+             speed_dir, steer_dir, 
+             (speed > 0) ? speed : -speed,
+             (steering > 0) ? steering : -steering);
+    
+    // Print and send the message
+    printf("%s", msg);
+    if (send_message(sock, msg) < 0) {
+        // Handle send failure - maybe reconnect or reset connection
+        printf("Failed to send message, attempting to reconnect...\n");
+        // Close existing socket
+        closesocket(sock);
+        // Attempt to reconnect
+        sock = run_client();
     }
 }
 
@@ -352,7 +364,7 @@ void client_task(__unused void *params)
         printf("------------------------------\n");
 
         // Delay to control sampling rate
-        sleep_ms(50);  // 20Hz update rate
+        sleep_ms(100);  // 20Hz update rate
     }
 
     // Cleanup WiFi on task exit (normally never reached)
