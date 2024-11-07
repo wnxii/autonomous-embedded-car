@@ -5,7 +5,6 @@
 #include "hardware/gpio.h"
 #include "../motor/motor.h"
 
-#define SAFETY_THRESHOLD 10.0f // 10 cm safety threshold
-
+#define SAFETY_THRESHOLD 10.0f // 10 cm safety threshold for ultrasonic sensor
 
 #endif

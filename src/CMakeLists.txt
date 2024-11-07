@@ -36,11 +36,7 @@ if (NOT FREERTOS_KERNEL_PATH AND NOT DEFINED ENV{FREERTOS_KERNEL_PATH})
     message("Skipping Pico W FreeRTOS examples as FREERTOS_KERNEL_PATH not defined")
 else()
     include(FreeRTOS_Kernel_import.cmake)
-
-    add_subdirectory(motor)
-    add_subdirectory(main_wheel_encoder)
-    add_subdirectory(main_ultrasonic_sensor)
-    add_subdirectory(ir_sensor)
+    
     add_subdirectory(main_station_1)
     add_subdirectory(main_station_2)
 endif() 

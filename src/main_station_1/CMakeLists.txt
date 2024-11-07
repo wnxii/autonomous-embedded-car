@@ -1,9 +1,10 @@
 # Define the main_station_1 executable for the wheel encoder application
 add_executable(main_station_1
     main_station_1.c
-    ../main_wheel_encoder/wheel_encoder.c  # Add wheel_encoder.c to the motor project
-    ../main_ultrasonic_sensor/ultrasonic_sensor.c # Add ultrasonic_sensor.c to the motor project
+    ../wheel_encoder/wheel_encoder.c  # Add wheel_encoder.c to the motor project
+    ../ultrasonic_sensor/ultrasonic_sensor.c # Add ultrasonic_sensor.c to the motor project
     ../motor/motor.c
+    ../ir_sensor/line_following/line_following.c
 )
 
 # Link libraries for the wheel encoder executable

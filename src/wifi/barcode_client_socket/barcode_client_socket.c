@@ -10,9 +10,11 @@
 // Wi-Fi and server configurations
 #define WIFI_SSID "liangfannn"
 #define WIFI_PASSWORD "saypleasethankyou"
-#define SERVER_IP "172.20.10.2"
+#define SERVER_IP "172.20.10.5"
 #define SERVER_PORT 12345
 #define TEST_TASK_PRIORITY (tskIDLE_PRIORITY + 2UL)
+
+volatile bool connected = false;
 
 // Send message over socket
 static void send_message(int socket, const char *msg) {
@@ -75,6 +77,8 @@ void client_task(__unused void *params) {
         return;
     }
 
+    connected = true;
+
     // Initialize barcode scanning tasks
     // init_barcode();
 
@@ -97,7 +101,7 @@ void init_barcode_wifi() {
 
 /* int main() {
     stdio_init_all();
-   
+    init_barcode_wifi();
     vTaskStartScheduler();
     return 0;
-} */
+}  */

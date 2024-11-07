@@ -227,8 +227,8 @@ char parse_scanned_bars()
     }
 
     // Message creation for display task
-    snprintf(displayMessage, sizeof(displayMessage), "Scanned Code: %s", scanned_code);
-    xQueueSend(xServerQueue, &displayMessage, portMAX_DELAY); // Send message to display task
+    /* snprintf(displayMessage, sizeof(displayMessage), "Scanned Code: %s \n", scanned_code);
+    xQueueSend(xServerQueue, &displayMessage, portMAX_DELAY); // Send message to display task */
 
     // Return decoded character to caller
     return decoded_char;

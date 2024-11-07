@@ -8,8 +8,8 @@
 #include "task.h"
 
 #define TEST_TASK_PRIORITY (tskIDLE_PRIORITY + 2UL)
-#define WIFI_SSID ""
-#define WIFI_PASSWORD ""
+#define WIFI_SSID "liangfannn"
+#define WIFI_PASSWORD "saypleasethankyou"
 
 static void send_message(int socket, char *msg) {
   int len = strlen(msg);
@@ -54,7 +54,7 @@ static void send_message(int socket, char *msg) {
 
 static int handle_single_command(int conn_sock) {
     // 512 bytes buffer for message reception
-    char buffer[512];
+    char buffer[1028];
     int done = 0;
 
     // Loop to receive data in chunks

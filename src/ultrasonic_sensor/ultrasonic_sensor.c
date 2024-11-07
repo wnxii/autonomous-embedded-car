@@ -17,31 +17,6 @@
 static QueueHandle_t distance_queue;
 SemaphoreHandle_t measurement_mutex;
 volatile MeasurementData current_measurement = {0, 0, false, false};
-// static SemaphoreHandle_t measurement_mutex;
-
-// static volatile MeasurementData current_measurement = {0, 0, false, false};
-
-/* void echo_isr(uint gpio, uint32_t events) {
-    BaseType_t xHigherPriorityTaskWoken = pdFALSE;
-    uint64_t current_time = time_us_64();
-    
-    if (xSemaphoreTakeFromISR(measurement_mutex, &xHigherPriorityTaskWoken) == pdTRUE) {
-        if (events & GPIO_IRQ_EDGE_RISE) {
-            if (current_measurement.waiting_for_echo) {
-                current_measurement.start_time = current_time;
-            }
-        } else if (events & GPIO_IRQ_EDGE_FALL) {
-            if (current_measurement.start_time > 0) {
-                current_measurement.end_time = current_time;
-                current_measurement.measurement_done = true;
-                current_measurement.waiting_for_echo = false;
-            }
-        }
-        xSemaphoreGiveFromISR(measurement_mutex, &xHigherPriorityTaskWoken);
-    }
-    
-    portYIELD_FROM_ISR(xHigherPriorityTaskWoken);
-} */
 
 void ultrasonic_task(void *params) {
     TickType_t last_wake_time = xTaskGetTickCount();
@@ -108,13 +83,6 @@ void ultrasonic_task(void *params) {
         // Clear old value from queue and send new one
         float prev_distance;
         while (xQueueReceive(distance_queue, &prev_distance, 0) == pdTRUE);  // Clear queue
-        // Try to read the last distance from the queue, if it exists
-        /* if (xQueueReceive(distance_queue, &prev_distance, 0) == pdTRUE) {
-            // Compare with previous distance to detect noise
-            if (fabs(distance - prev_distance) > NOISE_THRESHOLD) {
-                distance = prev_distance;  // Use previous reading if this one seems noisy
-            }
-        } */
 
         xQueueSend(distance_queue, &distance, 0);
         
@@ -137,12 +105,6 @@ void init_ultrasonic_sensor() {
     // Start with trigger pin low
     gpio_put(TRIGGER_PIN, 0);
     
-    /* // Configure interrupt for both rising and falling edges
-    gpio_set_irq_enabled_with_callback(ECHO_PIN, 
-                                     GPIO_IRQ_EDGE_RISE | GPIO_IRQ_EDGE_FALL,
-                                     true, 
-                                     &echo_isr);
-     */
     gpio_set_irq_enabled(ECHO_PIN, GPIO_IRQ_EDGE_RISE | GPIO_IRQ_EDGE_FALL,
                                      true);
     // Create ultrasonic task

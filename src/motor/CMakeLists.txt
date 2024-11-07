@@ -2,7 +2,7 @@
 add_executable(motor
     motor.c
     ../main_wheel_encoder/wheel_encoder.c  # Add wheel_encoder.c to the motor project
-    ../main_ultrasonic_sensor/ultrasonic_sensor.c # Add ultrasonic_sensor.c to the motor project
+    ../ir_sensor/line_following/line_following.c
 )
 
 # Link libraries for the motor executable

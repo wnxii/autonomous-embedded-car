@@ -3,5 +3,7 @@
 
 void init_barcode_wifi();
 
+extern volatile bool connected;
+
 
 #endif

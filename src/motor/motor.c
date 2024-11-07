@@ -6,24 +6,31 @@
 #include <stdbool.h>
 #include "semphr.h"
 #include <math.h>
-#include "../main_wheel_encoder/wheel_encoder.h" // Adjust this path if necessary
-#include "../main_ultrasonic_sensor/ultrasonic_sensor.h"
+#include "../wheel_encoder/wheel_encoder.h" // Adjust this path if necessary
+#include "../ir_sensor/line_following/line_following.h"
 #include "motor.h"
 
 // Global motor configurations
-static MotorConfig left_motor = {PWM_PIN1, DIR_PIN1, DIR_PIN2, 0.0f, 0.0f};
-static MotorConfig right_motor = {PWM_PIN2, DIR_PIN3, DIR_PIN4, 0.0f, 0.0f};
+static MotorConfig left_motor = {PWM_PIN1, DIR_PIN1, DIR_PIN2, 0.0f, 0.0f, 0.0f, 0.0f};
+static MotorConfig right_motor = {PWM_PIN2, DIR_PIN3, DIR_PIN4, 0.0f, 0.0f, 0.0f, 0.0f};
 
 // Mutex for PID calculations
 static SemaphoreHandle_t pid_mutex;
 
-static PIDState left_pid = {0.0f, 0.0f};
-static PIDState right_pid = {0.0f, 0.0f};
-// static PIDState turning_pid = {0.0f, 0.0f};  // Initialize PID state for turning
+static PIDState left_speed_pid = {0.0f, 0.0f};
+static PIDState right_speed_pid = {0.0f, 0.0f};
+
 // Global variable to store the current movement direction
 static MovementDirection current_movement = STOP;
+
+// Global variable to store if car is currently turning.
 bool turning_active = false;
+
+// Global variable to store latest duty cycle set to control speed
 static float current_duty_cycle = 0.0;
+
+// Global variable to store status of CONTROL_MOTOR_ON_LINE
+volatile int stop_running = 0;
 
 // Function to set PWM for a motor
 void set_motor_pwm(uint gpio, float duty_cycle, float freq) {
@@ -81,44 +88,55 @@ float calculate_pid(float set_point, float current_value, PIDState* pid_state) {
 
 // Control motor forward and backward
 void control_motor_forward_backward(MotorConfig* motor, bool forward, float target_speed) {
-    //printf("Controlling motor on PWM pin %d - Direction: %s, Target speed: %.2f\n", motor->pwm_pin, forward ? "Forward" : "Backward", target_speed, (motor == &left_motor) ? "Left motor" : "Right motor");
     printf("Controlling motor on PWM pin %d - %s\n", motor->pwm_pin, (motor == &left_motor) ? "Left motor" : "Right motor");
 
     gpio_put(motor->dir_pin1, !forward);
     gpio_put(motor->dir_pin2, forward);
 
+    motor->target_speed = target_speed;
+
     // Obtain current speed from encoder
     motor->current_speed = (motor == &left_motor) ? get_left_speed() : get_right_speed();
-    // motor->current_speed = get_left_speed();
-    motor->target_speed = target_speed;
     printf("Current speed from encoder: %.2f\n", motor->current_speed);
 
     set_motor_pwm(motor->pwm_pin, MAX_DUTY_CYCLE, 1000.0f);
-
-    /* if (xSemaphoreTake(pid_mutex, portMAX_DELAY)) {
-        PIDState* pid = (motor == &left_motor) ? &left_pid : &right_pid;
-        float pwm_output = calculate_pid(motor -> target_speed, motor -> current_speed, pid);
-        set_motor_pwm(motor -> pwm_pin, pwm_output, 1000.0f);
-        xSemaphoreGive(pid_mutex);
-    }  */
 }
 
-// Helper function to calculate angle turned
-/* float get_angle_turned() {
-    // Implement an approximate calculation for the angle turned,
-    // depending on the distance difference between left and right wheels
-    float wheel_base = 12.0f; // Distance between wheels in cm, adjust based on robot dimensions
-    float left_dist = get_left_distance();
-    float right_dist = get_right_distance();
-     // Calculate the angle turned in degrees using wheel distance difference
-    float angle = fabs((right_dist - left_dist) / wheel_base * (180.0f / M_PI));
-    printf("Angle turned: %.2f degrees\n", angle);
-    return angle;
-} */
+// Task that aligns car based on line detection
+void control_motor_on_line_task(void *pvParameters) {
+    while (1) {
+        // Check if line following mode is active
+        if (current_movement == MOTOR_ON_LINE) {
+            // Check the current line detection status
+            if (black_line_detected) {
+                // Line is detected; move slightly to the right to stay on the line
+                set_motor_pwm(left_motor.pwm_pin, MAX_LINE_DUTY_CYCLE, 256.0f);
+                set_motor_pwm(right_motor.pwm_pin, MIN_LINE_DUTY_CYCLE, 256.0f);
+                vTaskDelay(pdMS_TO_TICKS(6000)); // Larger correction time as car keeps veering towards the left
+            } else {
+                // Line not detected; move slightly to the left to search for the line
+                set_motor_pwm(left_motor.pwm_pin, MIN_LINE_DUTY_CYCLE, 256.0f);
+                set_motor_pwm(right_motor.pwm_pin, MAX_LINE_DUTY_CYCLE, 256.0f);
+                vTaskDelay(pdMS_TO_TICKS(200));
 
+                // If line still not detected; move to the right to search for the line
+                if (!black_line_detected) {
+                    set_motor_pwm(left_motor.pwm_pin, MAX_LINE_DUTY_CYCLE, 256.0f);
+                    set_motor_pwm(right_motor.pwm_pin, MIN_LINE_DUTY_CYCLE, 256.0f);
+                    vTaskDelay(pdMS_TO_TICKS(6000)); // // Larger correction time as car keeps veering towards the left
+                }  
+            }
+            stop_running += 1;
+        }
+        vTaskDelay(pdMS_TO_TICKS(10)); // Short delay for responsive line checking
+    }
+}
+
+
+// Helper function to calculate angle when performing pivot turns
 float get_angle_turned_pivot() {
     // Implement an approximate calculation for pivot turn angle
-    float wheel_base = 9.0f; // Distance between wheels in cm, adjust based on robot dimensions
+    float wheel_base = 10.0f; // Distance between wheels in cm, adjust based on robot dimensions
     float left_dist = fabs(get_left_distance());  // Take absolute values to sum distances
     float right_dist = fabs(get_right_distance());
     printf("Left Distance: %f", left_dist);
@@ -135,42 +153,37 @@ void turn_control_task(void *pvParameters) {
     float target_angle = *(float *)pvParameters;
     MovementDirection direction = current_movement;
     
-    // Turn until the angle is reached
+    // Turn until the angle is reached (+-5.0) 
     float current_angle = 0.0f;
     while (current_angle < target_angle - 5.0f || current_angle > target_angle + 5.0f) {  // Keep adjusting until close to target angle
+        if ((current_angle - target_angle) > 5.0f) {
+            break;
+        } 
         current_angle = get_angle_turned_pivot(); // Update current angle
-        /* float pid_output = 0.0;
-        // Use PID controller to get the speed adjustment
-        if (xSemaphoreTake(pid_mutex, portMAX_DELAY)) {
-            pid_output = calculate_pid(target_angle, current_angle, &turning_pid);
-            xSemaphoreGive(pid_mutex);
-        } */
 
-        if (direction == RIGHT) {
+        if (direction == PIVOT_RIGHT) {
+            // Apply reverse and forward direction to left and right motor respectively for right turn
             gpio_put(left_motor.dir_pin1, 0);
             gpio_put(left_motor.dir_pin2, 1);
             gpio_put(right_motor.dir_pin1, 1);
             gpio_put(right_motor.dir_pin2, 0);
-            // Apply differential speed for right turn
             
-             // Calculate right motor speed to be lower by a differential amount
-            set_motor_pwm(left_motor.pwm_pin, MAX_DUTY_CYCLE, 1000.0f);  // Increase left wheel speed
+            set_motor_pwm(left_motor.pwm_pin, MAX_DUTY_CYCLE, 1000.0f);
             set_motor_pwm(right_motor.pwm_pin, MAX_DUTY_CYCLE, 1000.0f);
                 
-                  // Slow right wheel
-        } else if (direction == LEFT) {
+        } else if (direction == PIVOT_LEFT) {
+            // Apply forward and reverse direction to left and right motor respectively for left turn
             gpio_put(left_motor.dir_pin1, 1);
             gpio_put(left_motor.dir_pin2, 0);
             gpio_put(right_motor.dir_pin1, 0);
             gpio_put(right_motor.dir_pin2, 1);
-            // Apply differential speed for left turn
 
-            set_motor_pwm(left_motor.pwm_pin, MAX_DUTY_CYCLE, 1000.0f);  // Slow left wheel
-            set_motor_pwm(right_motor.pwm_pin, MAX_DUTY_CYCLE, 1000.0f);  // Increase right wheel speed
+            set_motor_pwm(left_motor.pwm_pin, MAX_DUTY_CYCLE, 1000.0f); 
+            set_motor_pwm(right_motor.pwm_pin, MAX_DUTY_CYCLE, 1000.0f); 
         }
 
         // Update current angle based on encoder data
-        current_angle = get_angle_turned_pivot();  // Function to compute angle turned from encoder data
+        current_angle = get_angle_turned_pivot();
         
         vTaskDelay(pdMS_TO_TICKS(2.5));  // Delay to let motors adjust
     }
@@ -202,6 +215,7 @@ void control_motor_turn(float target_angle) {
     }   
 }
 
+// Disable all pins to stop motor
 void stop_motor() {
     gpio_put(left_motor.pwm_pin, 0);
     gpio_put(right_motor.pwm_pin, 0);
@@ -213,7 +227,7 @@ void stop_motor() {
 
 // Unified movement function
 void move_car(MovementDirection direction, float speed, float angle) {
-    current_movement = direction;
+    current_movement = direction; // Update current direction
     printf("Moving car - Direction: %d, Speed: %.2f\n", direction, speed);
     switch(direction) {
         case FORWARD:
@@ -234,14 +248,9 @@ void move_car(MovementDirection direction, float speed, float angle) {
             control_motor_turn(angle);
             break;
         
-        case LEFT:
-            set_motor_pwm(left_motor.pwm_pin, MAX_DUTY_CYCLE - 0.3, 1000.0f);
-            set_motor_pwm(right_motor.pwm_pin, MAX_DUTY_CYCLE - 0.2, 1000.f);
-            break;
-        
-        case RIGHT:
-            set_motor_pwm(left_motor.pwm_pin, MAX_DUTY_CYCLE - 0.2, 1000.0f);
-            set_motor_pwm(right_motor.pwm_pin, MAX_DUTY_CYCLE - 0.4, 1000.f);
+        case MOTOR_ON_LINE:
+            control_motor_forward_backward(&left_motor, true, speed);
+            control_motor_forward_backward(&right_motor, true, speed);
             break;
 
         case STOP:
@@ -250,7 +259,7 @@ void move_car(MovementDirection direction, float speed, float angle) {
     }
 }
 
-// PID control task that checks the current target speed for each motor
+// PID control task that stabilse car when moving forward
 void pid_update_task(void *pvParameters) {
     while (1) {
         if (current_movement == FORWARD) {
@@ -260,7 +269,7 @@ void pid_update_task(void *pvParameters) {
                 float left_current_speed = get_left_speed();
                 left_motor.current_speed = left_current_speed;
                 if (xSemaphoreTake(pid_mutex, portMAX_DELAY)) {
-                    float left_pwm_output = calculate_pid(left_motor.target_speed, left_current_speed, &left_pid);
+                    float left_pwm_output = calculate_pid(left_motor.target_speed, left_current_speed, &left_speed_pid);
                     set_motor_pwm(left_motor.pwm_pin, left_pwm_output, 1000.0f);
                     xSemaphoreGive(pid_mutex);
                 }
@@ -269,23 +278,24 @@ void pid_update_task(void *pvParameters) {
                 float right_current_speed = get_right_speed();
                 right_motor.current_speed = right_current_speed;
                 if (xSemaphoreTake(pid_mutex, portMAX_DELAY)) {
-                    float right_pwm_output = calculate_pid(right_motor.target_speed, right_current_speed, &right_pid);
+                    float right_pwm_output = calculate_pid(right_motor.target_speed, right_current_speed, &right_speed_pid);
                     set_motor_pwm(right_motor.pwm_pin, right_pwm_output, 1000.0f);
                     xSemaphoreGive(pid_mutex);
                 }
             } 
-        } else {
+        } 
+        
+        else {
             // If the robot is stopped, skip PID calculations and wait before checking again
             vTaskDelay(pdMS_TO_TICKS(500)); // Adjust the delay as needed
         }   
             
-        vTaskDelay(pdMS_TO_TICKS(50)); // Adjust delay as needed for responsiveness
+        vTaskDelay(pdMS_TO_TICKS(30)); // Adjust delay as needed for responsiveness
     }
 }
 
 // Initialization function
 void init_motor() {
-    // printf("Initializing car movement\n");
     // Initialize GPIO for motors
     gpio_init(DIR_PIN1);
     gpio_init(DIR_PIN2);
@@ -302,6 +312,7 @@ void init_motor() {
 
     // Create PID update task for maintaining speed alignment between wheels
     xTaskCreate(pid_update_task, "PID Update", configMINIMAL_STACK_SIZE, NULL, tskIDLE_PRIORITY + 1, NULL);
+    xTaskCreate(control_motor_on_line_task, "Control Motor on Line", configMINIMAL_STACK_SIZE, NULL, tskIDLE_PRIORITY + 1, NULL);
 }
 
 
