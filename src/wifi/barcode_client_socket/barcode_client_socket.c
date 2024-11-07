@@ -76,7 +76,7 @@ void client_task(__unused void *params) {
     }
 
     // Initialize barcode scanning tasks
-    vInitializeTasks();
+    // init_barcode();
 
     char message[200];
     while (true) {
@@ -90,10 +90,14 @@ void client_task(__unused void *params) {
     cyw43_arch_deinit();
 }
 
-int main() {
-    stdio_init_all();
+void init_barcode_wifi() {
     TaskHandle_t task_handle;
     xTaskCreate(client_task, "client_task", 4096, NULL, TEST_TASK_PRIORITY, &task_handle);
+}
+
+/* int main() {
+    stdio_init_all();
+   
     vTaskStartScheduler();
     return 0;
-}
+} */

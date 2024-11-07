@@ -18,6 +18,13 @@ typedef struct {
     uint64_t timestamp;
 } EncoderData;
 
+extern volatile EncoderData left_data;
+extern volatile EncoderData right_data;
+
+// Mutexes for each encoder
+extern SemaphoreHandle_t left_data_mutex;
+extern SemaphoreHandle_t right_data_mutex;
+
 // Encoder and GPIO initializations
 void init_wheel_encoders();
 

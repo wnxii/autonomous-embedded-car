@@ -5,27 +5,23 @@
 #include "task.h"
 #include "queue.h"
 #include "semphr.h"
+#include "ultrasonic_sensor.h"
+#include <stdio.h>
+#include <math.h>
 
-#define TRIGGER_PIN 1
-#define ECHO_PIN 0
 #define MAX_DISTANCE 400 // Maximum distance in cm
 #define TIMEOUT_US 23200 // Timeout in microseconds (based on MAX_DISTANCE)
+#define NOISE_THRESHOLD 35.0f  // Adjust based on your application
 
 // FreeRTOS handles
 static QueueHandle_t distance_queue;
-static SemaphoreHandle_t measurement_mutex;
+SemaphoreHandle_t measurement_mutex;
+volatile MeasurementData current_measurement = {0, 0, false, false};
+// static SemaphoreHandle_t measurement_mutex;
 
-// Measurement data structure
-typedef struct {
-    uint64_t start_time;
-    uint64_t end_time;
-    bool measurement_done;
-    bool waiting_for_echo;
-} MeasurementData;
+// static volatile MeasurementData current_measurement = {0, 0, false, false};
 
-static volatile MeasurementData current_measurement = {0, 0, false, false};
-
-void echo_isr(uint gpio, uint32_t events) {
+/* void echo_isr(uint gpio, uint32_t events) {
     BaseType_t xHigherPriorityTaskWoken = pdFALSE;
     uint64_t current_time = time_us_64();
     
@@ -45,7 +41,7 @@ void echo_isr(uint gpio, uint32_t events) {
     }
     
     portYIELD_FROM_ISR(xHigherPriorityTaskWoken);
-}
+} */
 
 void ultrasonic_task(void *params) {
     TickType_t last_wake_time = xTaskGetTickCount();
@@ -110,8 +106,16 @@ void ultrasonic_task(void *params) {
         }
         
         // Clear old value from queue and send new one
-        float dummy;
-        while (xQueueReceive(distance_queue, &dummy, 0) == pdTRUE);  // Clear queue
+        float prev_distance;
+        while (xQueueReceive(distance_queue, &prev_distance, 0) == pdTRUE);  // Clear queue
+        // Try to read the last distance from the queue, if it exists
+        /* if (xQueueReceive(distance_queue, &prev_distance, 0) == pdTRUE) {
+            // Compare with previous distance to detect noise
+            if (fabs(distance - prev_distance) > NOISE_THRESHOLD) {
+                distance = prev_distance;  // Use previous reading if this one seems noisy
+            }
+        } */
+
         xQueueSend(distance_queue, &distance, 0);
         
         // Run every 100ms
@@ -133,12 +137,14 @@ void init_ultrasonic_sensor() {
     // Start with trigger pin low
     gpio_put(TRIGGER_PIN, 0);
     
-    // Configure interrupt for both rising and falling edges
+    /* // Configure interrupt for both rising and falling edges
     gpio_set_irq_enabled_with_callback(ECHO_PIN, 
                                      GPIO_IRQ_EDGE_RISE | GPIO_IRQ_EDGE_FALL,
                                      true, 
                                      &echo_isr);
-    
+     */
+    gpio_set_irq_enabled(ECHO_PIN, GPIO_IRQ_EDGE_RISE | GPIO_IRQ_EDGE_FALL,
+                                     true);
     // Create ultrasonic task
     xTaskCreate(ultrasonic_task, 
                "Ultrasonic Task", 
@@ -158,5 +164,6 @@ float measure_distance() {
 
 bool is_obstacle_detected(float safety_threshold) {
     float distance = measure_distance();
+    printf("Ultrasonic Distance: %f \n", distance);
     return (distance > 0 && distance <= safety_threshold);
 }

@@ -13,17 +13,28 @@
 // static SemaphoreHandle_t data_mutex;
 
 // Separate queues for each encoder
-static QueueHandle_t left_encoder_queue;
+/* static QueueHandle_t left_encoder_queue;
 static QueueHandle_t right_encoder_queue;
 
 // Mutexes for each encoder
 static SemaphoreHandle_t left_data_mutex;
-static SemaphoreHandle_t right_data_mutex;
+static SemaphoreHandle_t right_data_mutex; */
 
 // Global variables protected by mutex
-static volatile EncoderData left_data = {0, 0};
-static volatile EncoderData right_data = {0, 0};
+// static volatile EncoderData left_data = {0, 0};
+// static volatile EncoderData right_data = {0, 0};
 // static volatile EncoderData current_data = {0, 0};
+
+volatile EncoderData left_data = {0, 0};
+volatile EncoderData right_data = {0, 0};
+static EncoderData left_last_data = {0, 0};
+static EncoderData right_last_data = {0, 0};
+
+SemaphoreHandle_t left_data_mutex;
+SemaphoreHandle_t right_data_mutex;
+
+static QueueHandle_t left_encoder_queue;
+static QueueHandle_t right_encoder_queue;
 
 /* void encoder_callback(uint gpio, uint32_t events) {
     BaseType_t xHigherPriorityTaskWoken = pdFALSE;
@@ -66,7 +77,7 @@ void right_encoder_callback(uint gpio, uint32_t events) {
 } */
 
 // Unified callback for both left and right encoder interrupts
-void encoder_callback(uint gpio, uint32_t events) {
+/* void encoder_callback(uint gpio, uint32_t events) {
     if (gpio == LEFT_ENCODER_PIN) {
         // printf("Left encoder callback triggered - GPIO %d\n", gpio);
         BaseType_t xHigherPriorityTaskWoken = pdFALSE;
@@ -91,7 +102,7 @@ void encoder_callback(uint gpio, uint32_t events) {
 
         portYIELD_FROM_ISR(xHigherPriorityTaskWoken);
     } 
-}
+} */
 
 
 /* void encoder_task(void *params) {
@@ -239,7 +250,7 @@ void init_wheel_encoders() {
     
      // Register the global callback once
     // gpio_set_irq_enabled_with_callback(RIGHT_ENCODER_PIN, GPIO_IRQ_EDGE_RISE | GPIO_IRQ_EDGE_FALL, true, &right_encoder_callback);
-    gpio_set_irq_enabled_with_callback(LEFT_ENCODER_PIN, GPIO_IRQ_EDGE_RISE | GPIO_IRQ_EDGE_FALL, true, &encoder_callback);
+    // gpio_set_irq_enabled_with_callback(LEFT_ENCODER_PIN, GPIO_IRQ_EDGE_RISE | GPIO_IRQ_EDGE_FALL, true, &encoder_callback);
     // Create FreeRTOS objects
     left_encoder_queue = xQueueCreate(1, sizeof(EncoderData));
     right_encoder_queue = xQueueCreate(1, sizeof(EncoderData));
@@ -311,8 +322,7 @@ float get_right_distance() {
                data.pulse_count, revolutions, distance); */
         printf("Right Distance - Pulses: %lu, Distance Per Hole: %.2f, Distance: %.2f cm\n",
                data.pulse_count, distance_per_pulse, distance );
-    }
-
+    } 
     return distance;
 }
 
@@ -345,14 +355,13 @@ float get_right_distance() {
 
 // Function to get speed for a specific encoder
 float get_left_speed() {
-    static EncoderData last_data = {0, 0};
     EncoderData current;
     float speed = 0.0f;
 
     if (xQueuePeek(left_encoder_queue, &current, 0) == pdTRUE) {
-        if (current.pulse_count != last_data.pulse_count) {  // Only calculate if count changed
-            float time_diff = (current.timestamp - last_data.timestamp) / 1000000.0f; // Convert to seconds
-            float count_diff = current.pulse_count - last_data.pulse_count;
+        if (current.pulse_count != left_last_data.pulse_count) {  // Only calculate if count changed
+            float time_diff = (current.timestamp - left_last_data.timestamp) / 1000000.0f; // Convert to seconds
+            float count_diff = current.pulse_count - left_last_data.pulse_count;
 
             if (time_diff > 0) {
                 // float revolutions = count_diff / PULSES_PER_REVOLUTION;
@@ -363,7 +372,7 @@ float get_left_speed() {
                        speed, count_diff, time_diff);
             }
 
-            last_data = current;
+            left_last_data = current;
         } else {
             printf("No pulse count change detected for left encoder\n");
         }
@@ -376,14 +385,13 @@ float get_left_speed() {
 }
 
 float get_right_speed() {
-    static EncoderData last_data = {0, 0};
     EncoderData current;
     float speed = 0.0f;
 
     if (xQueuePeek(right_encoder_queue, &current, 0) == pdTRUE) {
-        if (current.pulse_count != last_data.pulse_count) {  // Only calculate if count changed
-            float time_diff = (current.timestamp - last_data.timestamp) / 1000000.0f; // Convert to seconds
-            float count_diff = current.pulse_count - last_data.pulse_count;
+        if (current.pulse_count != right_last_data.pulse_count) {  // Only calculate if count changed
+            float time_diff = (current.timestamp - right_last_data.timestamp) / 1000000.0f; // Convert to seconds
+            float count_diff = current.pulse_count - right_last_data.pulse_count;
 
             if (time_diff > 0) {
                 float revolutions = count_diff / PULSES_PER_REVOLUTION;
@@ -392,7 +400,7 @@ float get_right_speed() {
                        speed, count_diff, time_diff);
             } 
 
-            last_data = current;
+            right_last_data = current;
         } else {
             printf("No pulse count change detected for right encoder\n");
         }
@@ -421,6 +429,8 @@ void reset_left_encoder() {
     if (xSemaphoreTake(left_data_mutex, portMAX_DELAY) == pdTRUE) {
         left_data.pulse_count = 0;
         left_data.timestamp = 0;
+        left_last_data.pulse_count = 0;
+        left_last_data.timestamp = 0;
         printf("Left Encoder reset - count and timestamp zeroed\n");
         xSemaphoreGive(left_data_mutex);
 
@@ -433,6 +443,8 @@ void reset_right_encoder() {
     if (xSemaphoreTake(right_data_mutex, portMAX_DELAY) == pdTRUE) {
         right_data.pulse_count = 0;
         right_data.timestamp = 0;
+        right_last_data.pulse_count = 0;
+        right_last_data.timestamp = 0;
         printf("Right Encoder reset - count and timestamp zeroed\n");
         xSemaphoreGive(right_data_mutex);
 

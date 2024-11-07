@@ -25,13 +25,16 @@
 void vBarcodeTask(void *pvParameters);
 void vButtonTask(void *pvParameters);
 void vDisplayTask(void *pvParameters);
-void vInitializeTasks(void);
+void init_barcode(void);
 void init_button();
+void reset_barcode();
 
 // extern char barcode_char;              // Character variable to store scanned and parsed barcode character
 // extern volatile bool scanning_allowed; // Boolean to indicate when scanning is allowed
 // extern bool start_scan;                // Boolean to indicate barcode is scanning
 // External queue declaration for server-bound messages
 extern QueueHandle_t xServerQueue;
+extern volatile bool error_scanning;
+extern volatile bool scan_started;
 
 #endif

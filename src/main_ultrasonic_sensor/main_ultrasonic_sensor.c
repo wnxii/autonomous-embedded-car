@@ -9,7 +9,7 @@ void init_ultrasonic_sensor();
 float measure_distance();
 bool is_obstacle_detected(float safety_threshold);
 
-#define SAFETY_THRESHOLD 20.0f // 20 cm safety threshold
+#define SAFETY_THRESHOLD 10.0f // 20 cm safety threshold
 
 // Display task to show ultrasonic sensor readings
 void display_task(void *params) {
