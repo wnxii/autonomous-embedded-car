@@ -39,4 +39,5 @@ else()
     
     add_subdirectory(main_station_1)
     add_subdirectory(main_station_2)
+    add_subdirectory(main_station_3)
 endif() 

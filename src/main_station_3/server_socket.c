@@ -8,8 +8,8 @@
 #include "task.h"
 
 #define TEST_TASK_PRIORITY (tskIDLE_PRIORITY + 2UL)
-#define WIFI_SSID "yongjun"
-#define WIFI_PASSWORD "pewpew1234"
+#define WIFI_SSID ""
+#define WIFI_PASSWORD ""
 
 // Function to receive data from accelerometer
 bool receive_data_with_timing(int client_socket) {
