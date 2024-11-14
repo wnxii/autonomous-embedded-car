@@ -43,56 +43,43 @@ bool receive_data_with_timing(int client_socket) {
 // Function to run the TCP server
 void run_server()
 {
-    int server_sock = socket(AF_INET, SOCK_STREAM, 0);
+    int server_sock = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
+    if (server_sock < 0) {
+        printf("Unable to create socket: error %d\n", errno);
+        return;
+    }
+
     struct sockaddr_in listen_addr = {
         .sin_family = AF_INET,
         .sin_port = htons(12345),
         .sin_addr.s_addr = htonl(INADDR_ANY),
     };
 
-    if (server_sock < 0)
-    {
-        printf("Unable to create socket: error %d\n", errno);
-        return;
-    }
-
-    if (bind(server_sock, (struct sockaddr *)&listen_addr, sizeof(listen_addr)) < 0)
-    {
+    if (bind(server_sock, (struct sockaddr *)&listen_addr, sizeof(listen_addr)) < 0) {
         printf("Unable to bind socket: error %d\n", errno);
+        closesocket(server_sock);
         return;
     }
 
-    if (listen(server_sock, 1) < 0)
-    {
-        printf("Unable to listen on socket: error %d\n", errno);
-        return;
-    }
+    printf("Starting UDP server at %s on port %u\n", ip4addr_ntoa(netif_ip4_addr(netif_list)), ntohs(listen_addr.sin_port));
 
-    printf("Starting server at %s on port %u\n", ip4addr_ntoa(netif_ip4_addr(netif_list)), ntohs(listen_addr.sin_port));
+    struct sockaddr_in client_addr;
+    socklen_t client_addr_len = sizeof(client_addr);
+    char buffer[512];
 
     while (true)
     {
-        struct sockaddr_storage remote_addr;
-        socklen_t len = sizeof(remote_addr);
-        int conn_sock = accept(server_sock, (struct sockaddr *)&remote_addr, &len);
-        if (conn_sock < 0)
-        {
-            printf("Unable to accept incoming connection: error %d\n", errno);
+        int recv_len = recvfrom(server_sock, buffer, sizeof(buffer) - 1, 0, (struct sockaddr *)&client_addr, &client_addr_len);
+        if (recv_len < 0) {
+            printf("Failed to receive message: error %d\n", errno);
             continue;
         }
 
-        printf("Client connected.\n");
-        printf("Connection from %s\n", ip4addr_ntoa((ip4_addr_t *)&((struct sockaddr_in *)&remote_addr)->sin_addr));
-
-        if (!receive_data_with_timing(conn_sock))
-        {
-            // Client disconnected or an error occurred
-            closesocket(conn_sock);
-            continue;
-        }
-
-        closesocket(conn_sock);
+        buffer[recv_len] = '\0';
+        printf("%s\n", buffer);
     }
+
+    closesocket(server_sock);
 }
 
 static void main_task()
