@@ -6,7 +6,6 @@
 
 // Barcode detection threshold and time delay
 #define MOVING_AVG_WINDOW 2         // Define window size for moving average
-#define LINE_CONTRAST_THRESHOLD 2.5f     // Contrast threshold in volts for detecting black vs. white
 
 void init_line_sensor();
 
