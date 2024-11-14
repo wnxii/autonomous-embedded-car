@@ -43,15 +43,15 @@ endif()
 
 # Hardware-specific examples in subdirectories:
 add_subdirectory(accelerometer)
-add_subdirectory(wifi)
-add_subdirectory(dashboard)
+#add_subdirectory(wifi)
+#add_subdirectory(dashboard)
 
 if (NOT FREERTOS_KERNEL_PATH AND NOT DEFINED ENV{FREERTOS_KERNEL_PATH})
     message("Skipping Pico W FreeRTOS examples as FREERTOS_KERNEL_PATH not defined")
 else()
     include(FreeRTOS_Kernel_import.cmake)
     
-    # add_subdirectory(main_station_1)
-    # add_subdirectory(main_station_2)
-    # add_subdirectory(main_station_3)
+    #add_subdirectory(main_station_1)
+    #add_subdirectory(main_station_2)
+    #add_subdirectory(main_station_3)
 endif() 
