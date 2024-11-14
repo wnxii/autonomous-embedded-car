@@ -4,40 +4,67 @@
 #include "lwip/apps/lwiperf.h"
 #include "lwip/ip4_addr.h"
 #include "lwip/netif.h"
+#include "../../main/FreeRTOSConfig.h"
 #include "FreeRTOS.h"
 #include "task.h"
+#include "server_socket.h"
 
 #define TEST_TASK_PRIORITY (tskIDLE_PRIORITY + 2UL)
 #define WIFI_SSID "yongjun"
 #define WIFI_PASSWORD "pewpew1234"
 
-// Function to receive data from accelerometer
-bool receive_data_with_timing(int client_socket) {
-    char buffer[512];
-    int bytes_received;
+// Helper function to unmap from one range to another
+int unmap(int value, int in_min, int in_max, int out_min, int out_max)
+{
+    long unmapped = (long)(value - in_min) * (out_max - out_min) / (in_max - in_min) + out_min;
+    if (unmapped < out_min)
+        return out_min;
+    if (unmapped > out_max)
+        return out_max;
+    return (int)unmapped;
+}
 
-    while (true)
+// Unmaps an ASCII value back to the original range
+int unmap_from_ascii_range(int ascii_value, int ascii_min, int ascii_max, int out_min, int out_max, int ascii_neutral)
+{
+    // If ASCII value is neutral, return 0
+    if (ascii_value == ascii_neutral)
     {
-        // Receive data from the client
-        bytes_received = recv(client_socket, buffer, sizeof(buffer) - 1, 0);
-        if (bytes_received > 0)
-        {
-            buffer[bytes_received] = '\0'; // Null-terminate the received string
-            printf("%s", buffer);
-        }
-        else if (bytes_received == 0)
-        {
-            // Client has disconnected
-            printf("Client disconnected.\n");
-            return false;
-        }
-        else
-        {
-            // An error occurred
-            printf("Error receiving data: %d\n", errno);
-            return false;
-        }
+        return 0;
     }
+
+    // Determine if we're unmapping from the positive or negative range
+    if (ascii_value > ascii_neutral)
+    {
+        // Handle positive range
+        return unmap(ascii_value, ascii_neutral + 1, ascii_max, 1, out_max);
+    }
+    else
+    {
+        // Handle negative range
+        return unmap(ascii_value, ascii_min, ascii_neutral - 1, out_min, -1);
+    }
+}
+
+// Example usage in UDP receive callback:
+void handle_received_controls(const char *data)
+{
+    // Extract ASCII values
+    int ascii_speed = (unsigned char)data[0];    // First byte for speed
+    int ascii_steering = (unsigned char)data[1]; // Second byte for steering
+
+    // Unmap speed (ASCII 0-40, neutral 20) back to -212 to 212
+    int speed = unmap_from_ascii_range(ascii_speed, 0, 40, -100, 100, 20);
+
+    // Unmap steering (ASCII 0-40, neutral 20) back to -80 to 80
+    int steering = unmap_from_ascii_range(ascii_steering, 0, 40, -100, 100, 20);
+
+    printf("Decoded values - Speed: %d, Steering: %d\n", speed, steering);
+
+    // Now you can use speed and steering values to control your device
+    // For example:
+    // set_motor_speed(speed);
+    // set_steering_angle(steering);
 }
 
 // Function to run the TCP server
@@ -75,41 +102,36 @@ void run_server()
             continue;
         }
 
-        buffer[recv_len] = '\0';
-        printf("%s\n", buffer);
+        printf("Message Length: %d\n", recv_len);
+        buffer[recv_len] = '\0'; // Null-terminate the received string
+        handle_received_controls(buffer);
     }
 
     closesocket(server_sock);
 }
 
-static void main_task()
+static void server_task(void *params)
 {
-  if (cyw43_arch_init()) {
-    printf("failed to initialise\n");
-    return;
-  }
+    if (cyw43_arch_init()) {
+        printf("Failed to initialize WiFi\n");
+        return;
+    }
 
-  cyw43_arch_enable_sta_mode();
+    cyw43_arch_enable_sta_mode();
 
-  printf("Connecting to WiFi...\n");
+    printf("Connecting to WiFi...\n");
 
-  if (cyw43_arch_wifi_connect_timeout_ms(WIFI_SSID, WIFI_PASSWORD, CYW43_AUTH_WPA2_AES_PSK, 30000)) {
-    printf("failed to connect.\n");
-    exit(1);
-  }
-  else {
-    printf("Connected.\n");
-  }
-
-  run_server();
-  cyw43_arch_deinit();
+    if (cyw43_arch_wifi_connect_timeout_ms(WIFI_SSID, WIFI_PASSWORD, CYW43_AUTH_WPA2_AES_PSK, 30000)) {
+        printf("Failed to connect to WiFi.\n");
+        return;
+    }
+    
+    printf("Connected to WiFi.\n");
+    run_server();
+    cyw43_arch_deinit();
 }
 
-int main(void) {
-  stdio_init_all();
-  TaskHandle_t task_handle;
-  xTaskCreate(main_task, "main_task", 4096, NULL, TEST_TASK_PRIORITY, &task_handle);
-  vTaskStartScheduler();
-
-  return 0;
+void init_server_socket(void) {
+    printf("Initializing server socket...\n");
+    xTaskCreate(server_task, "ServerTask", 4096, NULL, TEST_TASK_PRIORITY, NULL);
 }

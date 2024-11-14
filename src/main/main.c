@@ -11,6 +11,7 @@
 #include "../ir_sensor/barcode_scanner/barcode_scanner.h"
 #include "../ir_sensor/line_following/line_following.h"
 #include "../wifi/barcode_client_socket/barcode_client_socket.h"
+#include "../wifi/server_socket/server_socket.h"
 #include "../ultrasonic_sensor/ultrasonic_sensor.h"
 #include "main.h"
 
@@ -22,6 +23,7 @@ void init_hardware() {
     init_barcode();
     init_line_sensor();
     init_ultrasonic_sensor();
+    init_server_socket();
 }
 
 // Callback function for encoder pins

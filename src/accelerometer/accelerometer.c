@@ -24,11 +24,11 @@
 #define ROLL_THRESHOLD 10.0f  // Threshold for roll to detect left/right
 
 // WiFi and UDP configuration
-#define WIFI_SSID "wnxi-ip"
-#define WIFI_PASSWORD "Wenxi2002"
-#define SERVER_IP "172.20.10.7"
+#define WIFI_SSID "yongjun"
+#define WIFI_PASSWORD "pewpew1234"
+#define SERVER_IP "172.20.10.13"
 #define UDP_PORT 12345
-#define MSG_MAX_LEN 150
+#define MSG_MAX_LEN 10
 
 void i2c_init_setup()
 {
@@ -119,17 +119,56 @@ int map_angle_to_control(float angle, float threshold)
     }
 }
 
-void send_direction_and_intensity(struct udp_pcb* pcb, const ip_addr_t* addr, int speed, int steering)
-{
-    char msg[MSG_MAX_LEN];
-    const char *speed_dir = (speed > 0) ? "Forward" : (speed < 0) ? "Backward" : "Neutral";
-    const char *steer_dir = (steering > 0) ? "Right" : (steering < 0) ? "Left" : "Center";
+// void send_direction_and_intensity(struct udp_pcb* pcb, const ip_addr_t* addr, int speed, int steering)
+// {
+//     char msg[MSG_MAX_LEN];
+//     const char *speed_dir = (speed > 0) ? "Forward" : (speed < 0) ? "Backward" : "Neutral";
+//     const char *steer_dir = (steering > 0) ? "Right" : (steering < 0) ? "Left" : "Center";
 
-    snprintf(msg, MSG_MAX_LEN, "[%s-%s] Speed: %d, Steering: %d\n", 
-             speed_dir, steer_dir, 
-             (speed > 0) ? speed : -speed, 
-             (steering > 0) ? steering : -steering);
+//     snprintf(msg, MSG_MAX_LEN, "[%s-%s] Speed: %d, Steering: %d\n", 
+//              speed_dir, steer_dir, 
+//              (speed > 0) ? speed : -speed, 
+//              (steering > 0) ? steering : -steering);
     
+//     send_udp_message(pcb, addr, msg);
+// }
+
+// Helper function to map one range to another
+int map(int value, int in_min, int in_max, int out_min, int out_max) {
+    long mapped = (long)(value - in_min) * (out_max - out_min) / (in_max - in_min) + out_min;
+    if (mapped < out_min) return out_min;
+    if (mapped > out_max) return out_max;
+    return (int)mapped;
+}
+
+// Maps a value from one range to an ASCII character range with a specified neutral point
+int map_to_ascii_range(int value, int in_min, int in_max, int ascii_min, int ascii_max, int ascii_neutral) {
+    // If input is close to 0 (neutral), return the neutral ASCII value
+    int neutral_threshold = (in_max - in_min) / 20; // Adjust this threshold as needed
+    if (abs(value) <= neutral_threshold) {
+        return ascii_neutral;
+    }
+
+    // Determine if we're mapping the positive or negative range
+    if (value > 0) {
+        return map(value, neutral_threshold, in_max, ascii_neutral + 1, ascii_max);
+    } else {
+        return map(value, in_min, -neutral_threshold, ascii_min, ascii_neutral - 1);
+    }
+}
+
+// Example of how to use it in your send_direction_and_intensity function:
+void send_direction_and_intensity(struct udp_pcb* pcb, const ip_addr_t* addr, int speed, int steering) {
+    // Map speed (-212 to 212) to ASCII range (0 to 41) with 20 as neutral
+    int ascii_speed = map_to_ascii_range(speed, -212, 212, 0, 40, 20);
+    
+    // Map steering (-80 to 80) to ASCII range (42 to 83) with 62 as neutral
+    int ascii_steering = map_to_ascii_range(steering, -80, 80, 0, 40, 20);
+    
+    char msg[MSG_MAX_LEN];
+    snprintf(msg, MSG_MAX_LEN, "%c%c", (char)ascii_speed, (char)ascii_steering);
+    printf("Sending: %s\n Ascii Speed: %d, Ascii Steering: %d\n", msg, ascii_speed, ascii_steering);
+
     send_udp_message(pcb, addr, msg);
 }
 
