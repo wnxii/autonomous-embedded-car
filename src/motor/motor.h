@@ -80,6 +80,8 @@ typedef struct {
 // Prototype functions
 void init_motor();
 void move_car(MovementDirection direction, float speed, float angle, int steering);
+MotorControl map_remote_output_to_speed(int remote_output);
+void set_target_speed(MotorConfig* motor, float target_speed);
 
 // Global values to be used in main()
 extern bool turning_active;

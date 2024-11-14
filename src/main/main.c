@@ -85,17 +85,18 @@ float get_average_distance() {
 // Task for car movement
 void car_movement_task(void *pvParameters) {
     // Initialize movement system
-
+    MotorControl control;
+    
     // Code for Remote Control
     while (1)
     {
-        /* code */
+        control = map_remote_output_to_speed(remote_target_speed);
+        float target_speed = (control.left_wheel_speed + control.right_wheel_speed) / 2;
+        move_car(control.direction, target_speed, 0, 0);
     }
-    
-
 
     // Code for Autonomous Line Following and Barcode Scanning
-    const int lost_line_threshold = 30; // Number of cycles without line detection before stopping
+    /* const int lost_line_threshold = 30; // Number of cycles without line detection before stopping
     
     while(1) {
         if(connected) {// Check that car is connected to Wifi and server
@@ -111,7 +112,7 @@ void car_movement_task(void *pvParameters) {
 
             break; // Exit the task if no recovery is expected
         } 
-    }
+    } */
 }
 
 // Main function

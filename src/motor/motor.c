@@ -27,7 +27,7 @@ static MovementDirection current_movement = STOP;
 bool turning_active = false;
 
 // Global variable to store latest duty cycle set to control speed
-static float current_duty_cycle = 0.0;
+static float current_duty_cycle = 1.0;
 
 // Global variable to store status of CONTROL_MOTOR_ON_LINE
 volatile int stop_running = 0;
@@ -98,6 +98,8 @@ void control_motor_direction(MotorConfig* motor, bool forward, float target_spee
     // Obtain current speed from encoder
     motor->current_speed = (motor == &left_motor) ? get_left_speed() : get_right_speed();
     printf("Current speed from encoder: %.2f\n", motor->current_speed);
+
+    
 
     set_motor_pwm(motor->pwm_pin, MAX_DUTY_CYCLE, 256.0f);
 }
@@ -320,7 +322,7 @@ void move_car(MovementDirection direction, float speed, float angle, int steerin
 // PID control task that stabilse car when moving forward
 void pid_update_task(void *pvParameters) {
     while (1) {
-        if (current_movement == FORWARD) {
+        if (current_movement == FORWARD || current_movement == BACKWARD) {
             // Only adjust if the target speed is greater than zero
             if (left_motor.target_speed > 0 || right_motor.target_speed > 0) {
                 // Update the PID output for left motor
