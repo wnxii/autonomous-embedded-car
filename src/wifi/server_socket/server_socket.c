@@ -13,6 +13,9 @@
 #define WIFI_SSID "yongjun"
 #define WIFI_PASSWORD "pewpew1234"
 
+int remote_target_speed = 0;
+int remote_steering = 0;
+
 // Helper function to unmap from one range to another
 int unmap(int value, int in_min, int in_max, int out_min, int out_max)
 {
@@ -54,12 +57,12 @@ void handle_received_controls(const char *data)
     int ascii_steering = (unsigned char)data[1]; // Second byte for steering
 
     // Unmap speed (ASCII 0-40, neutral 20) back to -212 to 212
-    int speed = unmap_from_ascii_range(ascii_speed, 0, 40, -20, 20, 0);
+    remote_target_speed = unmap_from_ascii_range(ascii_speed, 0, 40, -20, 20, 0);
 
     // Unmap steering (ASCII 0-40, neutral 20) back to -80 to 80
-    int steering = unmap_from_ascii_range(ascii_steering, 0, 40, -20, 20, 0);
+    remote_steering = unmap_from_ascii_range(ascii_steering, 0, 40, -20, 20, 0);
 
-    printf("Decoded values - Speed: %d, Steering: %d\n", speed, steering);
+    printf("Decoded values - Speed: %d, Steering: %d\n", remote_target_speed, remote_steering);
 
     // Now you can use speed and steering values to control your device
     // For example:
@@ -105,7 +108,7 @@ void run_server()
         printf("Message Length: %d\n", recv_len);
         buffer[recv_len] = '\0'; // Null-terminate the received string
         printf("%s", buffer);
-        // handle_received_controls(buffer);
+        handle_received_controls(buffer);
     }
 
     closesocket(server_sock);
@@ -137,7 +140,7 @@ void init_server_socket(void) {
     xTaskCreate(server_task, "ServerTask", 4096, NULL, TEST_TASK_PRIORITY, NULL);
 }
 
-int main() {
+/* int main() {
     stdio_init_all();
     printf("Starting server socket\n");
 
@@ -145,4 +148,4 @@ int main() {
 
     vTaskStartScheduler();
     return 0;
-}
+} */

@@ -87,9 +87,11 @@ void car_movement_task(void *pvParameters) {
     // Initialize movement system
 
     // Code for Remote Control
-    //
-    //
-    //
+    while (1)
+    {
+        /* code */
+    }
+    
 
 
     // Code for Autonomous Line Following and Barcode Scanning
@@ -98,13 +100,13 @@ void car_movement_task(void *pvParameters) {
     while(1) {
         if(connected) {// Check that car is connected to Wifi and server
 
-            move_car(MOTOR_ON_LINE, 10.0, 0); // Enable line following
+            // move_car(MOTOR_ON_LINE, 10.0, 0); // Enable line following
             
             while (stop_running <= lost_line_threshold) { // Stop line following once car have gone past the line
                 vTaskDelay(50);
             }
 
-            move_car(STOP, 0.0f, 0.0f); // Stop the car
+            // move_car(STOP, 0.0f, 0.0f); // Stop the car
             printf("Line lost consistently. Stopping the car.\n");
 
             break; // Exit the task if no recovery is expected

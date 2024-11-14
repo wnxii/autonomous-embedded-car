@@ -1,7 +1,7 @@
 # Define the main executable for the motor control application
 add_executable(motor
     motor.c
-    ../main_wheel_encoder/wheel_encoder.c  # Add wheel_encoder.c to the motor project
+    ../wheel_encoder/wheel_encoder.c  # Add wheel_encoder.c to the motor project
     ../ir_sensor/line_following/line_following.c
 )
 

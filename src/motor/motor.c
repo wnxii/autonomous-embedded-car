@@ -87,7 +87,7 @@ float calculate_pid(float set_point, float current_value, PIDState* pid_state) {
 }
 
 // Control motor forward, backward
-void control_motor_direction(MotorConfig* motor, bool forward, float target_speed, int oscillation) {
+void control_motor_direction(MotorConfig* motor, bool forward, float target_speed, int steering) {
     printf("Controlling motor on PWM pin %d - %s\n", motor->pwm_pin, (motor == &left_motor) ? "Left motor" : "Right motor");
 
     gpio_put(motor->dir_pin1, !forward);
@@ -98,10 +98,6 @@ void control_motor_direction(MotorConfig* motor, bool forward, float target_spee
     // Obtain current speed from encoder
     motor->current_speed = (motor == &left_motor) ? get_left_speed() : get_right_speed();
     printf("Current speed from encoder: %.2f\n", motor->current_speed);
-
-    if (current_duty_cycle == MAX_DUTY_CYCLE) {
-
-    }
 
     set_motor_pwm(motor->pwm_pin, MAX_DUTY_CYCLE, 256.0f);
 }
@@ -245,7 +241,7 @@ MotorControl map_remote_output_to_speed(int remote_output) {
     return control;
 } 
 
-// Function to map remote speed input to speed
+/* // Function to map remote speed input to speed
 MotorControl map_remote_output_to_osciliation(int remote_output) {
     MotorControl control;
     float speed = 0.0;
@@ -270,7 +266,7 @@ MotorControl map_remote_output_to_osciliation(int remote_output) {
 
     return control;
 } 
-
+ */
 // Disable all pins to stop motor
 void stop_motor() {
     gpio_put(left_motor.pwm_pin, 0);
@@ -282,18 +278,18 @@ void stop_motor() {
 }
 
 // Unified movement function
-void move_car(MovementDirection direction, float speed, float angle, int oscillation) {
+void move_car(MovementDirection direction, float speed, float angle, int steering) {
     current_movement = direction; // Update current direction
     printf("Moving car - Direction: %d, Speed: %.2f\n", direction, speed);
     switch(direction) {
         case FORWARD:
-            control_motor_direction(&left_motor, true, speed, oscillation);
-            control_motor_direction(&right_motor, true, speed, oscillation);
+            control_motor_direction(&left_motor, true, speed, steering);
+            control_motor_direction(&right_motor, true, speed, steering);
             break;
 
         case BACKWARD:
-            control_motor_direction(&left_motor, false, speed, oscillation);
-            control_motor_direction(&right_motor, false, speed, oscillation);
+            control_motor_direction(&left_motor, false, speed, steering);
+            control_motor_direction(&right_motor, false, speed, steering);
             break;
 
         case PIVOT_LEFT:
@@ -311,8 +307,8 @@ void move_car(MovementDirection direction, float speed, float angle, int oscilla
             break;
         
         case MOTOR_ON_LINE:
-            control_motor_direction(&left_motor, true, speed, oscillation);
-            control_motor_direction(&right_motor, true, speed, oscillation);
+            control_motor_direction(&left_motor, true, speed, steering);
+            control_motor_direction(&right_motor, true, speed, steering);
             break;
 
         case STOP:

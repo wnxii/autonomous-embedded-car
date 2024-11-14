@@ -79,7 +79,7 @@ typedef struct {
 
 // Prototype functions
 void init_motor();
-void move_car(MovementDirection direction, float speed, float angle, int oscillation);
+void move_car(MovementDirection direction, float speed, float angle, int steering);
 
 // Global values to be used in main()
 extern bool turning_active;
