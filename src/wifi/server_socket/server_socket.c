@@ -4,8 +4,10 @@
 #include "lwip/apps/lwiperf.h"
 #include "lwip/ip4_addr.h"
 #include "lwip/netif.h"
+#include "../../main/FreeRTOSConfig.h"
 #include "FreeRTOS.h"
 #include "task.h"
+#include "server_socket.h"
 
 #define TEST_TASK_PRIORITY (tskIDLE_PRIORITY + 2UL)
 #define WIFI_SSID "yongjun"
@@ -103,39 +105,33 @@ void run_server()
         printf("Message Length: %d\n", recv_len);
         buffer[recv_len] = '\0'; // Null-terminate the received string
         handle_received_controls(buffer);
-        }
+    }
 
     closesocket(server_sock);
 }
 
-static void main_task()
+static void server_task(void *params)
 {
-  if (cyw43_arch_init()) {
-    printf("failed to initialise\n");
-    return;
-  }
+    if (cyw43_arch_init()) {
+        printf("Failed to initialize WiFi\n");
+        return;
+    }
 
-  cyw43_arch_enable_sta_mode();
+    cyw43_arch_enable_sta_mode();
 
-  printf("Connecting to WiFi...\n");
+    printf("Connecting to WiFi...\n");
 
-  if (cyw43_arch_wifi_connect_timeout_ms(WIFI_SSID, WIFI_PASSWORD, CYW43_AUTH_WPA2_AES_PSK, 30000)) {
-    printf("failed to connect.\n");
-    exit(1);
-  }
-  else {
-    printf("Connected.\n");
-  }
-
-  run_server();
-  cyw43_arch_deinit();
+    if (cyw43_arch_wifi_connect_timeout_ms(WIFI_SSID, WIFI_PASSWORD, CYW43_AUTH_WPA2_AES_PSK, 30000)) {
+        printf("Failed to connect to WiFi.\n");
+        return;
+    }
+    
+    printf("Connected to WiFi.\n");
+    run_server();
+    cyw43_arch_deinit();
 }
 
-int main(void) {
-  stdio_init_all();
-  TaskHandle_t task_handle;
-  xTaskCreate(main_task, "main_task", 4096, NULL, TEST_TASK_PRIORITY, &task_handle);
-  vTaskStartScheduler();
-
-  return 0;
+void init_server_socket(void) {
+    printf("Initializing server socket...\n");
+    xTaskCreate(server_task, "ServerTask", 4096, NULL, TEST_TASK_PRIORITY, NULL);
 }
