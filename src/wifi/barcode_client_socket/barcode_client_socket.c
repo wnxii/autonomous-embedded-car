@@ -99,9 +99,9 @@ void init_barcode_wifi() {
     xTaskCreate(client_task, "client_task", 4096, NULL, TEST_TASK_PRIORITY, &task_handle);
 }
 
-int main() {
+/* int main() {
     stdio_init_all();
     init_barcode_wifi();
     vTaskStartScheduler();
     return 0;
-}  
+}   */

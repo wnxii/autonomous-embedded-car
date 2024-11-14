@@ -7,6 +7,7 @@ add_executable(main
     ../wifi/barcode_client_socket/barcode_client_socket.c
     ../ir_sensor/barcode_scanner/barcode_scanner.c
     ../ir_sensor/line_following/line_following.c
+    ../ultrasonic_sensor/ultrasonic_sensor.c
 )
 
 target_compile_definitions(main PRIVATE
