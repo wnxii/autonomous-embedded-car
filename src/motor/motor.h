@@ -23,9 +23,13 @@
 #define KD 0.0040f */
 
 // PID Constants (Tuned in school - can be refine further)
-#define KP 0.009f 
+/* #define KP 0.009f 
 #define KI 0.002f 
-#define KD 0.006f
+#define KD 0.006f  */
+
+#define KP 0.002f 
+#define KI 0.000f 
+#define KD 0.000f
 
 #define M_PI 3.14159265358979323846
 

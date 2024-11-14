@@ -99,7 +99,7 @@ void control_motor_forward_backward(MotorConfig* motor, bool forward, float targ
     motor->current_speed = (motor == &left_motor) ? get_left_speed() : get_right_speed();
     printf("Current speed from encoder: %.2f\n", motor->current_speed);
 
-    set_motor_pwm(motor->pwm_pin, MAX_DUTY_CYCLE, 1000.0f);
+    set_motor_pwm(motor->pwm_pin, MAX_DUTY_CYCLE, 256.0f);
 }
 
 // Task that aligns car based on line detection
@@ -270,7 +270,7 @@ void pid_update_task(void *pvParameters) {
                 left_motor.current_speed = left_current_speed;
                 if (xSemaphoreTake(pid_mutex, portMAX_DELAY)) {
                     float left_pwm_output = calculate_pid(left_motor.target_speed, left_current_speed, &left_speed_pid);
-                    set_motor_pwm(left_motor.pwm_pin, left_pwm_output, 1000.0f);
+                    set_motor_pwm(left_motor.pwm_pin, left_pwm_output, 256.0f);
                     xSemaphoreGive(pid_mutex);
                 }
 
@@ -279,7 +279,7 @@ void pid_update_task(void *pvParameters) {
                 right_motor.current_speed = right_current_speed;
                 if (xSemaphoreTake(pid_mutex, portMAX_DELAY)) {
                     float right_pwm_output = calculate_pid(right_motor.target_speed, right_current_speed, &right_speed_pid);
-                    set_motor_pwm(right_motor.pwm_pin, right_pwm_output, 1000.0f);
+                    set_motor_pwm(right_motor.pwm_pin, right_pwm_output, 256.0f);
                     xSemaphoreGive(pid_mutex);
                 }
             } 

@@ -2,7 +2,7 @@
 add_executable(main_station_2
     main_station_2.c
     ../wheel_encoder/wheel_encoder.c  # Add wheel_encoder.c to the motor project
-    ../ultrasonic_sensor/ultrasonic_sensor.c # Add ultrasonic_sensor.c to the motor project
+    #../ultrasonic_sensor/ultrasonic_sensor.c # Add ultrasonic_sensor.c to the motor project
     ../motor/motor.c
     ../wifi/barcode_client_socket/barcode_client_socket.c
     ../ir_sensor/barcode_scanner/barcode_scanner.c
