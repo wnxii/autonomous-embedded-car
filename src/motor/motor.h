@@ -36,6 +36,7 @@
 // Min and Max duty cycles for PID Calculation - forward movement
 #define MAX_DUTY_CYCLE 1.0f
 #define MIN_DUTY_CYCLE 0.0f
+#define MAX_SPEED 40.0
 
 // Min and Max duty cycles for line following
 #define MAX_LINE_DUTY_CYCLE 0.60f
@@ -48,6 +49,8 @@ typedef enum {
     STOP,
     PIVOT_LEFT,
     PIVOT_RIGHT,
+    LEFT,
+    RIGHT,
     MOTOR_ON_LINE
 } MovementDirection;
 
@@ -68,9 +71,15 @@ typedef struct {
     float prev_error;
 } PIDState;
 
+typedef struct {
+    MovementDirection direction;
+    float left_wheel_speed;
+    float right_wheel_speed;
+} MotorControl;
+
 // Prototype functions
 void init_motor();
-void move_car(MovementDirection direction, float speed, float angle);
+void move_car(MovementDirection direction, float speed, float angle, int oscillation);
 
 // Global values to be used in main()
 extern bool turning_active;

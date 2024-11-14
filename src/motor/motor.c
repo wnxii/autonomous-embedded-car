@@ -219,13 +219,57 @@ void control_motor_turn(float target_angle) {
     }   
 }
 
-// Function to map remote speed input to duty cycle (assuming max speed is represented by 19)
-/* float map_remote_output_to_speed(int speed_input) {
-    float duty_cycle = 
-    if (speed_input == 20) duty_cycle = 0;
-    if (speed_input > 19) speed_input = 19;
-    ;
-} */
+// Function to map remote speed input to speed
+MotorControl map_remote_output_to_speed(int remote_output) {
+    MotorControl control;
+    float speed = 0.0;
+    if (remote_output < 0) {
+        control.direction = BACKWARD;
+        
+        // Map the range -20 to 20 to a speed range from 0 to max_speed
+        control.left_wheel_speed = (MAX_SPEED / 20.0f) * -remote_output;
+        control.right_wheel_speed = (MAX_SPEED / 20.0f) * -remote_output;
+    } else if (remote_output > 0) {
+        control.direction = FORWARD;
+
+        // Map the range 1 to 20 to a speed range from 0 to max_speed
+        control.left_wheel_speed = (MAX_SPEED / 20.0f) * remote_output;
+        control.right_wheel_speed = (MAX_SPEED / 20.0f) * remote_output;
+    } else {
+        // If remote_output is 0, stop the motor
+        control.direction = STOP;
+        control.left_wheel_speed = 0.0;
+        control.right_wheel_speed = 0.0;
+    }
+
+    return control;
+} 
+
+// Function to map remote speed input to speed
+MotorControl map_remote_output_to_osciliation(int remote_output) {
+    MotorControl control;
+    float speed = 0.0;
+    if (remote_output < 0) {
+        control.direction = LEFT;
+        
+        // Map the range -20 to -1 to a speed range from 0 to max_speed
+        control.left_wheel_speed = (MAX_SPEED / 20.0f) * (20 + remote_output);  // Slower left wheel
+        control.right_wheel_speed = (MAX_SPEED / 20.0f) * -remote_output;       // Faster right wheel
+    } else if (remote_output > 0) {
+        control.direction = RIGHT;
+
+        // Map the range 1 to 80 to a speed range from 0 to max_speed
+        control.left_wheel_speed = (MAX_SPEED / 80.0f) * remote_output;
+        control.right_wheel_speed = (MAX_SPEED / 80.0f) * remote_output;
+    } else {
+        // If remote_output is 0, stop the motor
+        control.direction = STOP;
+        control.left_wheel_speed = 0.0;
+        control.right_wheel_speed = 0.0
+    }
+
+    return control;
+} 
 
 // Disable all pins to stop motor
 void stop_motor() {
@@ -258,6 +302,12 @@ void move_car(MovementDirection direction, float speed, float angle, int oscilla
 
         case PIVOT_RIGHT:
             control_motor_turn(angle);
+            break;
+
+        case LEFT:
+            break;
+
+        case RIGHT:
             break;
         
         case MOTOR_ON_LINE:

@@ -54,10 +54,10 @@ void handle_received_controls(const char *data)
     int ascii_steering = (unsigned char)data[1]; // Second byte for steering
 
     // Unmap speed (ASCII 0-40, neutral 20) back to -212 to 212
-    int speed = unmap_from_ascii_range(ascii_speed, 0, 40, -100, 100, 20);
+    int speed = unmap_from_ascii_range(ascii_speed, 0, 40, -20, 20, 0);
 
     // Unmap steering (ASCII 0-40, neutral 20) back to -80 to 80
-    int steering = unmap_from_ascii_range(ascii_steering, 0, 40, -100, 100, 20);
+    int steering = unmap_from_ascii_range(ascii_steering, 0, 40, -20, 20, 0);
 
     printf("Decoded values - Speed: %d, Steering: %d\n", speed, steering);
 
