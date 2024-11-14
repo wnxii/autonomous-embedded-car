@@ -104,7 +104,8 @@ void run_server()
 
         printf("Message Length: %d\n", recv_len);
         buffer[recv_len] = '\0'; // Null-terminate the received string
-        handle_received_controls(buffer);
+        printf("%s", buffer);
+        // handle_received_controls(buffer);
     }
 
     closesocket(server_sock);
@@ -134,4 +135,14 @@ static void server_task(void *params)
 void init_server_socket(void) {
     printf("Initializing server socket...\n");
     xTaskCreate(server_task, "ServerTask", 4096, NULL, TEST_TASK_PRIORITY, NULL);
+}
+
+int main() {
+    stdio_init_all();
+    printf("Starting server socket\n");
+
+    init_server_socket();
+
+    vTaskStartScheduler();
+    return 0;
 }
