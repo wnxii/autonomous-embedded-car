@@ -1,18 +1,14 @@
 // Libraries needed for magnetometer and gyroscope components
 #include <stdio.h>
 #include <math.h>
+#include <string.h>
 #include "pico/stdlib.h"
 #include "hardware/i2c.h"
-#include <math.h>
 
 // Libraries needed for WiFi component
 #include "pico/cyw43_arch.h"
-#include <lwip/sockets.h>
-#include "lwip/apps/lwiperf.h"
-#include "lwip/ip4_addr.h"
-#include "lwip/netif.h"
-#include "FreeRTOS.h"
-#include "task.h"
+#include "lwip/pbuf.h"
+#include "lwip/udp.h"
 
 // I2C configuration
 #define I2C_PORT i2c1
@@ -27,12 +23,12 @@
 #define PITCH_THRESHOLD 10.0f // Threshold for pitch to detect forward/backward
 #define ROLL_THRESHOLD 10.0f  // Threshold for roll to detect left/right
 
-// WiFi configuration
-#define TEST_TASK_PRIORITY (tskIDLE_PRIORITY + 2UL)
-#define WIFI_SSID "yongjun"
-#define WIFI_PASSWORD "pewpew1234"
-#define SERVER_IP "172.20.10.3"
-#define SERVER_PORT 12345
+// WiFi and UDP configuration
+#define WIFI_SSID "wnxi-ip"
+#define WIFI_PASSWORD "Wenxi2002"
+#define SERVER_IP "172.20.10.7"
+#define UDP_PORT 12345
+#define MSG_MAX_LEN 150
 
 void i2c_init_setup()
 {
@@ -43,49 +39,21 @@ void i2c_init_setup()
     gpio_pull_up(SCL_PIN);
 }
 
-void send_message(int socket, const char *msg)
+void send_udp_message(struct udp_pcb* pcb, const ip_addr_t* addr, const char* msg)
 {
-    int msg_len = strlen(msg);
-    int done = 0;
-    while (done < msg_len)
-    {
-        int msg_sent = send(socket, msg + done, msg_len - done, 0);
-        if (msg_sent <= 0)
-        {
-            printf("Connection closed\n");
-            return;
-        }
-        done += msg_sent;
-    }
-}
-
-int run_client()
-{
-    int sock = socket(AF_INET, SOCK_STREAM, IPPROTO_IP);
-    struct sockaddr_in server_addr;
-    server_addr.sin_len = sizeof(struct sockaddr_in);
-    server_addr.sin_family = AF_INET;
-    server_addr.sin_port = htons(SERVER_PORT);
-    inet_aton(SERVER_IP, &server_addr.sin_addr);
-
-    if (sock < 0)
-    {
-        printf("Unable to create socket: error %d\n", errno);
-        return 0;
+    struct pbuf* p = pbuf_alloc(PBUF_TRANSPORT, strlen(msg) + 1, PBUF_RAM);
+    if (!p) {
+        printf("Failed to allocate pbuf\n");
+        return;
     }
 
-    printf("Connecting to server at %s:%d\n", SERVER_IP, SERVER_PORT);
-    if (connect(sock, (struct sockaddr *)&server_addr, sizeof(server_addr)) < 0)
-    {
-        printf("Connection to server failed. Error: %d\n", errno);
-        closesocket(sock);
-        cyw43_arch_deinit();
-        return 0;
+    memcpy(p->payload, msg, strlen(msg) + 1);
+    err_t err = udp_sendto(pcb, p, addr, UDP_PORT);
+    pbuf_free(p);
+
+    if (err != ERR_OK) {
+        printf("Failed to send UDP message: %d\n", err);
     }
-
-    printf("Connected to server!\n");
-
-    return sock;
 }
 
 void lsm303_init()
@@ -131,8 +99,8 @@ void filter_data(float *filtered_value, float new_value, float alpha)
 
 void compute_tilt_angles(float acc_x, float acc_y, float acc_z, float *pitch, float *roll)
 {
-    *roll = atan2(acc_y, sqrt(acc_x * acc_x + acc_z * acc_z)) * 180 / M_PI; // Roll from Y and XZ components
-    *pitch = atan2(-acc_x, acc_z) * 180 / M_PI;                             // Pitch from X and Z components
+    *roll = atan2(acc_y, sqrt(acc_x * acc_x + acc_z * acc_z)) * 180 / M_PI;
+    *pitch = atan2(-acc_x, acc_z) * 180 / M_PI;
 }
 
 int map_angle_to_control(float angle, float threshold)
@@ -151,44 +119,58 @@ int map_angle_to_control(float angle, float threshold)
     }
 }
 
-void send_direction_and_intensity(int sock, int speed, int steering)
+void send_direction_and_intensity(struct udp_pcb* pcb, const ip_addr_t* addr, int speed, int steering)
 {
-    // Determine forward/backward direction and speed intensity
-    char msg[150];
+    char msg[MSG_MAX_LEN];
     const char *speed_dir = (speed > 0) ? "Forward" : (speed < 0) ? "Backward" : "Neutral";
     const char *steer_dir = (steering > 0) ? "Right" : (steering < 0) ? "Left" : "Center";
 
-    // Create single message combining both speed and steering
-    snprintf(msg, 150, "[%s-%s] Speed: %d, Steering: %d\n", speed_dir, steer_dir, (speed > 0) ? speed : -speed, (steering > 0) ? steering : -steering);
-    send_message(sock, msg);
+    snprintf(msg, MSG_MAX_LEN, "[%s-%s] Speed: %d, Steering: %d\n", 
+             speed_dir, steer_dir, 
+             (speed > 0) ? speed : -speed, 
+             (steering > 0) ? steering : -steering);
+    
+    send_udp_message(pcb, addr, msg);
 }
 
-void client_task(__unused void *params) {
-    int sock = 0;
+int main()
+{
+    stdio_init_all();
+
     if (cyw43_arch_init())
     {
-        printf("failed to initialise\n");
-        return;
+        printf("Failed to initialize\n");
+        return 1;
     }
 
     cyw43_arch_enable_sta_mode();
 
     printf("Connecting to WiFi...\n");
-
     if (cyw43_arch_wifi_connect_timeout_ms(WIFI_SSID, WIFI_PASSWORD, CYW43_AUTH_WPA2_AES_PSK, 30000))
     {
-        printf("failed to connect.\n");
-        exit(1);
+        printf("Failed to connect.\n");
+        cyw43_arch_deinit();
+        return 1;
     }
-    else
-    {
-        printf("Connected.\n");
+    printf("Connected.\n");
+
+    // Initialize UDP
+    struct udp_pcb* pcb = udp_new();
+    if (!pcb) {
+        printf("Failed to create UDP PCB\n");
+        cyw43_arch_deinit();
+        return 1;
     }
 
-    sock = run_client();
+    // Set up server address
+    ip_addr_t server_addr;
+    ipaddr_aton(SERVER_IP, &server_addr);
+
+    // Initialize sensors
     i2c_init_setup();
     lsm303_init();
 
+    // Variables for sensor data processing
     int16_t acc_x_raw, acc_y_raw, acc_z_raw;
     float acc_x_g, acc_y_g, acc_z_g;
     float acc_x_filtered = 0, acc_y_filtered = 0, acc_z_filtered = 0;
@@ -203,54 +185,47 @@ void client_task(__unused void *params) {
 
         // Read accelerometer data
         read_accel_data(&acc_x_raw, &acc_y_raw, &acc_z_raw);
-
         printf("Accel X: %d, Accel Y: %d, Accel Z: %d\n", acc_x_raw, acc_y_raw, acc_z_raw);
 
         // Convert raw data to 'g' units
         acc_x_g = acc_x_raw * 0.001;
         acc_y_g = acc_y_raw * 0.001;
         acc_z_g = acc_z_raw * 0.001;
-
         printf("Accel X: %.2f, Accel Y: %.2f, Accel Z: %.2f\n", acc_x_g, acc_y_g, acc_z_g);
 
         // Apply filtering
         filter_data(&acc_x_filtered, acc_x_g, alpha);
         filter_data(&acc_y_filtered, acc_y_g, alpha);
         filter_data(&acc_z_filtered, acc_z_g, alpha);
-
-        printf("Filtered Accel X: %.2f, Filtered Accel Y: %.2f, Filtered Accel Z: %.2f\n", acc_x_filtered, acc_y_filtered, acc_z_filtered);
+        printf("Filtered Accel X: %.2f, Filtered Accel Y: %.2f, Filtered Accel Z: %.2f\n", 
+               acc_x_filtered, acc_y_filtered, acc_z_filtered);
 
         // Compute tilt angles
         compute_tilt_angles(acc_x_filtered, acc_y_filtered, acc_z_filtered, &pitch, &roll);
-
         printf("Pitch: %.2f, Roll: %.2f\n", pitch, roll);
 
-        // Map pitch to forward/backward speed
+        // Map angles to control values
         speed = map_angle_to_control(pitch, PITCH_THRESHOLD);
-        // Map roll to left/right steering
         steering = map_angle_to_control(roll, ROLL_THRESHOLD);
 
-        // Display control values
         printf("Speed Control (based on pitch): %d\n", speed);
         printf("Steering Control (based on roll): %d\n", steering);
 
-        // Send direction and intensity
-        send_direction_and_intensity(sock, speed, steering);
+        // Send control values via UDP
+        send_direction_and_intensity(pcb, &server_addr, speed, steering);
 
         printf("------------------------------\n");
 
+#if PICO_CYW43_ARCH_POLL
+        // If using poll mode, need to periodically service the WiFi driver
+        cyw43_arch_poll();
         sleep_ms(50);
+#else
+        sleep_ms(50);
+#endif
     }
 
+    udp_remove(pcb);
     cyw43_arch_deinit();
-}
-
-int main()
-{
-    stdio_init_all();
-    TaskHandle_t task;
-    xTaskCreate(client_task, "MainThread", configMINIMAL_STACK_SIZE, NULL, 2, &task);
-    vTaskStartScheduler();
-
     return 0;
 }

@@ -29,9 +29,9 @@
 
 // WiFi configuration
 #define TEST_TASK_PRIORITY (tskIDLE_PRIORITY + 2UL)
-#define WIFI_SSID "yongjun"
-#define WIFI_PASSWORD "pewpew1234"
-#define SERVER_IP "172.20.10.3"
+#define WIFI_SSID ""
+#define WIFI_PASSWORD ""
+#define SERVER_IP ""
 #define SERVER_PORT 12345
 
 void i2c_init_setup()
