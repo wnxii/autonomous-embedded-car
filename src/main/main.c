@@ -17,13 +17,35 @@
 
 // Init all sensors required for station 2
 void init_hardware() {
+    printf("[1/7] INITIALIZING WHEEL ENCODERS\n");
     init_wheel_encoders();
+    sleep_ms(1000);
+
+    printf("[2/7] INITIALIZING MOTOR\n");
     init_motor();
-    init_barcode_wifi();
+    sleep_ms(1000);
+
+    printf("[3/7] INITIALIZING BARCODE SCANNER\n");
     init_barcode();
+    sleep_ms(1000);
+
+    printf("[4/7] INITIALIZING LINE SENSOR\n");
     init_line_sensor();
+    sleep_ms(1000);
+
+    printf("[5/7] INITIALIZING ULTRASONIC SENSOR\n");
     init_ultrasonic_sensor();
+    sleep_ms(1000);
+
+    printf("[6/7] INITIALIZING UDP CLIENT SOCKET\n");
+    init_barcode_wifi();
+    sleep_ms(1000);
+
+    printf("[7/7] INITIALIZING UDP SERVER SOCKET\n");
     init_server_socket();
+    sleep_ms(1000);
+
+    printf("HARDWARE INITIALIZATION COMPLETE\n");
 }
 
 // Callback function for encoder pins
