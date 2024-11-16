@@ -15,6 +15,8 @@
 #include "../ultrasonic_sensor/ultrasonic_sensor.h"
 #include "main.h"
 
+bool obstacle_detected = false; // Flag to track if an obstacle is detected
+
 // Init all sensors required for station 2
 void init_hardware() {
     printf("[1/7] INITIALIZING WHEEL ENCODERS\n");
@@ -112,8 +114,33 @@ void car_movement_task(void *pvParameters) {
     // Code for Remote Control
     while (1)
     {
-        control = map_remote_output_to_direction(remote_target_speed, remote_steering);
-        move_car(control.direction, control.left_wheel_speed, control.right_wheel_speed, 0);
+        // Check for obstacle detection
+        if (is_obstacle_detected(SAFETY_THRESHOLD)) {
+            obstacle_detected = true;
+            move_car(STOP, 0.0, 0.0, 0.0); // Stop the car immediately
+        }
+
+        // If obstacle is detected, only allow backward movement
+        if (obstacle_detected) {
+            if (remote_target_speed < 0) { // Allow backward movement only
+                control = map_remote_output_to_direction(remote_target_speed, remote_steering);
+                if (control.direction == BACKWARD || control.direction == STEER_BACKWARD_LEFT || control.direction == STEER_BACKWARD_RIGHT) {
+                    move_car(control.direction, control.left_wheel_speed, control.right_wheel_speed, 0.0);
+                    obstacle_detected = false;
+                } else {
+                    move_car(STOP, 0.0, 0.0, 0.0); // Stop if forward movement is attempted
+                    printf("Forward movement blocked due to obstacle.\n");
+                }
+            } else {
+                move_car(STOP, 0.0, 0.0, 0.0); // Stop if forward movement is attempted
+                printf("Forward movement blocked due to obstacle.\n");
+            }
+        } else {
+            // Normal operation when no obstacle is detected
+            control = map_remote_output_to_direction(remote_target_speed, remote_steering);
+            move_car(control.direction, control.left_wheel_speed, control.right_wheel_speed, 0.0);
+        }
+
         vTaskDelay(50);
     }
 
