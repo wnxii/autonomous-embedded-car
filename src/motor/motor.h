@@ -27,7 +27,7 @@
 #define KI 0.002f 
 #define KD 0.006f  */
 
-#define KP 0.002f 
+#define KP 0.01f 
 #define KI 0.000f 
 #define KD 0.000f
 
@@ -49,9 +49,10 @@ typedef enum {
     STOP,
     PIVOT_LEFT,
     PIVOT_RIGHT,
-    LEFT,
-    RIGHT,
-    MOTOR_ON_LINE
+    STEER_FORWARD_LEFT,
+    STEER_FORWARD_RIGHT,
+    STEER_BACKWARD_LEFT,
+    STEER_BACKWARD_RIGHT,
 } MovementDirection;
 
 // Motor control structure
@@ -79,12 +80,10 @@ typedef struct {
 
 // Prototype functions
 void init_motor();
-void move_car(MovementDirection direction, float speed, float angle, int steering);
-MotorControl map_remote_output_to_speed(int remote_output);
-void set_target_speed(MotorConfig* motor, float target_speed);
+void move_car(MovementDirection direction, float left_target_speed, float right_target_speed, float angle);
+MotorControl map_remote_output_to_direction(int remote_output, int remote_steering);
 
 // Global values to be used in main()
-extern bool turning_active;
-extern volatile int stop_running;
+extern bool pivot_turning_active;
 
 #endif

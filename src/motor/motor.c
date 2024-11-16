@@ -7,7 +7,6 @@
 #include "semphr.h"
 #include <math.h>
 #include "../wheel_encoder/wheel_encoder.h" // Adjust this path if necessary
-#include "../ir_sensor/line_following/line_following.h"
 #include "motor.h"
 
 // Global motor configurations
@@ -24,13 +23,10 @@ static PIDState right_speed_pid = {0.0f, 0.0f};
 static MovementDirection current_movement = STOP;
 
 // Global variable to store if car is currently turning.
-bool turning_active = false;
+bool pivot_turning_active = false;
 
 // Global variable to store latest duty cycle set to control speed
 static float current_duty_cycle = 1.0;
-
-// Global variable to store status of CONTROL_MOTOR_ON_LINE
-volatile int stop_running = 0;
 
 // Function to set PWM for a motor
 void set_motor_pwm(uint gpio, float duty_cycle, float freq) {
@@ -86,9 +82,10 @@ float calculate_pid(float set_point, float current_value, PIDState* pid_state) {
     return corrected_speed;
 }
 
-// Control motor forward, backward
-void control_motor_direction(MotorConfig* motor, bool forward, float target_speed, int steering) {
-    printf("Controlling motor on PWM pin %d - %s\n", motor->pwm_pin, (motor == &left_motor) ? "Left motor" : "Right motor");
+// Control motor forward, backward, steer left, steer right
+void control_motor_direction(MotorConfig* motor, bool forward, float target_speed) {
+    // printf("Controlling motor on PWM pin %d - %s\n", motor->pwm_pin, (motor == &left_motor) ? "Left motor" : "Right motor");
+    printf("Setting Target Speed (%.2f) on - %s\n", target_speed, (motor == &left_motor) ? "Left motor" : "Right motor");
 
     gpio_put(motor->dir_pin1, !forward);
     gpio_put(motor->dir_pin2, forward);
@@ -96,44 +93,13 @@ void control_motor_direction(MotorConfig* motor, bool forward, float target_spee
     motor->target_speed = target_speed;
 
     // Obtain current speed from encoder
-    motor->current_speed = (motor == &left_motor) ? get_left_speed() : get_right_speed();
-    printf("Current speed from encoder: %.2f\n", motor->current_speed);
+    // motor->current_speed = (motor == &left_motor) ? get_left_speed() : get_right_speed();
+    // printf("Current speed from encoder: %.2f\n", motor->current_speed);
 
 
 
     // set_motor_pwm(motor->pwm_pin, MAX_DUTY_CYCLE, 256.0f);
 }
-
-// Task that aligns car based on line detection
-void control_motor_on_line_task(void *pvParameters) {
-    while (1) {
-        // Check if line following mode is active
-        if (current_movement == MOTOR_ON_LINE) {
-            // Check the current line detection status
-            if (black_line_detected) {
-                // Line is detected; move slightly to the right to stay on the line
-                set_motor_pwm(left_motor.pwm_pin, MAX_LINE_DUTY_CYCLE, 256.0f);
-                set_motor_pwm(right_motor.pwm_pin, MIN_LINE_DUTY_CYCLE, 256.0f);
-                vTaskDelay(pdMS_TO_TICKS(6000)); // Larger correction time as car keeps veering towards the left
-            } else {
-                // Line not detected; move slightly to the left to search for the line
-                set_motor_pwm(left_motor.pwm_pin, MIN_LINE_DUTY_CYCLE, 256.0f);
-                set_motor_pwm(right_motor.pwm_pin, MAX_LINE_DUTY_CYCLE, 256.0f);
-                vTaskDelay(pdMS_TO_TICKS(200));
-
-                // If line still not detected; move to the right to search for the line
-                if (!black_line_detected) {
-                    set_motor_pwm(left_motor.pwm_pin, MAX_LINE_DUTY_CYCLE, 256.0f);
-                    set_motor_pwm(right_motor.pwm_pin, MIN_LINE_DUTY_CYCLE, 256.0f);
-                    vTaskDelay(pdMS_TO_TICKS(6000)); // // Larger correction time as car keeps veering towards the left
-                }  
-            }
-            stop_running += 1;
-        }
-        vTaskDelay(pdMS_TO_TICKS(10)); // Short delay for responsive line checking
-    }
-}
-
 
 // Helper function to calculate angle when performing pivot turns
 float get_angle_turned_pivot() {
@@ -151,7 +117,7 @@ float get_angle_turned_pivot() {
 }
 
 // Task to control the motor during turning
-void turn_control_task(void *pvParameters) {
+void pivot_turn_control_task(void *pvParameters) {
     float target_angle = *(float *)pvParameters;
     MovementDirection direction = current_movement;
     
@@ -191,16 +157,16 @@ void turn_control_task(void *pvParameters) {
     }
     
     // Reset turning flag and clean up
-    turning_active = false;
+    pivot_turning_active = false;
     vPortFree(pvParameters); // Free allocated memory for angle
     vTaskDelete(NULL); // Delete this task
 }
 
 // Control motor turning Left or Right
-void control_motor_turn(float target_angle) {
-    if (!turning_active) {
-        // Set turning_active to true to indicate tasks are running
-        turning_active = true;
+void control_motor_pivot_turn(float target_angle) {
+    if (!pivot_turning_active) {
+        // Set pivot_turning_active to true to indicate tasks are running
+        pivot_turning_active = true;
         // Allocate memory for passing target angle and direction
         float *angle_param = pvPortMalloc(sizeof(float));
         if (angle_param == NULL) {
@@ -209,32 +175,61 @@ void control_motor_turn(float target_angle) {
         }
         *angle_param = target_angle;
          // Start the turn control task with the angle and direction as parameters
-        if (xTaskCreate(turn_control_task, "Turn Control", configMINIMAL_STACK_SIZE, (void *)angle_param, tskIDLE_PRIORITY + 1, NULL) != pdPASS) {
-            printf("Failed to create Turn Control task\n");
+        if (xTaskCreate(pivot_turn_control_task, "Pivot Turn Control", configMINIMAL_STACK_SIZE, (void *)angle_param, tskIDLE_PRIORITY + 1, NULL) != pdPASS) {
+            printf("Failed to create Pivot Turn Control task\n");
             vPortFree(angle_param);
-            turning_active = false;
+            pivot_turning_active = false;
         }
     }   
 }
 
-// Function to map remote speed input to speed
-MotorControl map_remote_output_to_speed(int remote_output) {
+// Function to map remote controller output to forward / backwards direction and target speed
+MotorControl map_remote_output_to_direction(int remote_output_direction, int remote_output_steering) {
     MotorControl control;
-    float speed = 0.0;
-    if (remote_output < 0) {
-        control.direction = BACKWARD;
-        
-        // Map the range -20 to 20 to a speed range from 0 to max_speed
-        control.left_wheel_speed = (MAX_SPEED / 20.0f) * -remote_output;
-        control.right_wheel_speed = (MAX_SPEED / 20.0f) * -remote_output;
-    } else if (remote_output > 0) {
-        control.direction = FORWARD;
 
-        // Map the range 1 to 20 to a speed range from 0 to max_speed
-        control.left_wheel_speed = (MAX_SPEED / 20.0f) * remote_output;
-        control.right_wheel_speed = (MAX_SPEED / 20.0f) * remote_output;
+    // Initialize speeds to zero
+    control.left_wheel_speed = 0.0;
+    control.right_wheel_speed = 0.0;
+
+     // Handle backward motion
+    if (remote_output_direction < 0) {
+        if (remote_output_steering < 0) {
+            // Backward and steering left
+            control.direction = STEER_BACKWARD_LEFT;
+            control.left_wheel_speed = (MAX_SPEED / 20.0f) * -remote_output_direction * (20 + remote_output_steering) / 20.0f; // Slow left wheel
+            control.right_wheel_speed = (MAX_SPEED / 20.0f) * -remote_output_direction;                                     // Full speed for right wheel
+        } else if (remote_output_steering > 0) {
+            // Backward and steering right
+            control.direction = STEER_BACKWARD_RIGHT;
+            control.left_wheel_speed = (MAX_SPEED / 20.0f) * -remote_output_direction;                                      // Full speed for left wheel
+            control.right_wheel_speed = (MAX_SPEED / 20.0f) * -remote_output_direction * (20 - remote_output_steering) / 20.0f; // Slow right wheel
+        } else {
+            // Straight backward
+            control.direction = BACKWARD;
+            control.left_wheel_speed = (MAX_SPEED / 20.0f) * -remote_output_direction;
+            control.right_wheel_speed = (MAX_SPEED / 20.0f) * -remote_output_direction;
+        }
+        // Handle forward motion
+    } else if (remote_output_direction > 0) {
+        if (remote_output_steering < 0) {
+             // Forward and steering left
+            control.direction = STEER_FORWARD_LEFT;
+            control.left_wheel_speed = (MAX_SPEED / 20.0f) * remote_output_direction * (20 + remote_output_steering) / 20.0f; // Slow left wheel
+            control.right_wheel_speed = (MAX_SPEED / 20.0f) * remote_output_direction;                                       // Full speed for right wheel
+        } else if (remote_output_steering > 0) {
+            // Forward and steering right
+            control.direction = STEER_FORWARD_RIGHT;
+            control.left_wheel_speed = (MAX_SPEED / 20.0f) * remote_output_direction;                                        // Full speed for left wheel
+            control.right_wheel_speed = (MAX_SPEED / 20.0f) * remote_output_direction * (20 - remote_output_steering) / 20.0f; // Slow right wheel
+        } else {
+            // Straight forward
+            control.direction = FORWARD;
+            control.left_wheel_speed = (MAX_SPEED / 20.0f) * remote_output_direction;
+            control.right_wheel_speed = (MAX_SPEED / 20.0f) * remote_output_direction;
+        }
+        // Handle stopping
     } else {
-        // If remote_output is 0, stop the motor
+        // If remote_output is 0, stop the motors
         control.direction = STOP;
         control.left_wheel_speed = 0.0;
         control.right_wheel_speed = 0.0;
@@ -243,32 +238,6 @@ MotorControl map_remote_output_to_speed(int remote_output) {
     return control;
 } 
 
-/* // Function to map remote speed input to speed
-MotorControl map_remote_output_to_osciliation(int remote_output) {
-    MotorControl control;
-    float speed = 0.0;
-    if (remote_output < 0) {
-        control.direction = LEFT;
-        
-        // Map the range -20 to -1 to a speed range from 0 to max_speed
-        control.left_wheel_speed = (MAX_SPEED / 20.0f) * (20 + remote_output);  // Slower left wheel
-        control.right_wheel_speed = (MAX_SPEED / 20.0f) * -remote_output;       // Faster right wheel
-    } else if (remote_output > 0) {
-        control.direction = RIGHT;
-
-        // Map the range 1 to 80 to a speed range from 0 to max_speed
-        control.left_wheel_speed = (MAX_SPEED / 80.0f) * remote_output;
-        control.right_wheel_speed = (MAX_SPEED / 80.0f) * remote_output;
-    } else {
-        // If remote_output is 0, stop the motor
-        control.direction = STOP;
-        control.left_wheel_speed = 0.0;
-        control.right_wheel_speed = 0.0
-    }
-
-    return control;
-} 
- */
 // Disable all pins to stop motor
 void stop_motor() {
     gpio_put(left_motor.pwm_pin, 0);
@@ -280,37 +249,46 @@ void stop_motor() {
 }
 
 // Unified movement function
-void move_car(MovementDirection direction, float speed, float angle, int steering) {
+void move_car(MovementDirection direction, float left_target_speed, float right_target_speed, float angle) {
     current_movement = direction; // Update current direction
-    printf("Moving car - Direction: %d, Speed: %.2f\n", direction, speed);
+    printf("Moving car - Direction: %d, Left Target Speed: %.2f, Right Target Speed: %.2f\n", direction, left_target_speed, right_target_speed);
     switch(direction) {
         case FORWARD:
-            control_motor_direction(&left_motor, true, speed, steering);
-            control_motor_direction(&right_motor, true, speed, steering);
+            control_motor_direction(&left_motor, true, left_target_speed);
+            control_motor_direction(&right_motor, true, right_target_speed);
             break;
 
         case BACKWARD:
-            control_motor_direction(&left_motor, false, speed, steering);
-            control_motor_direction(&right_motor, false, speed, steering);
+            control_motor_direction(&left_motor, false, left_target_speed);
+            control_motor_direction(&right_motor, false, right_target_speed);
             break;
 
         case PIVOT_LEFT:
-            control_motor_turn(angle);
+            control_motor_pivot_turn(angle);
             break;
 
         case PIVOT_RIGHT:
-            control_motor_turn(angle);
+            control_motor_pivot_turn(angle);
             break;
 
-        case LEFT:
+        case STEER_FORWARD_LEFT:
+            control_motor_direction(&left_motor, true, left_target_speed);
+            control_motor_direction(&right_motor, true, right_target_speed);
             break;
 
-        case RIGHT:
+        case STEER_FORWARD_RIGHT:
+            control_motor_direction(&left_motor, true, left_target_speed);
+            control_motor_direction(&right_motor, true, right_target_speed);
             break;
-        
-        case MOTOR_ON_LINE:
-            control_motor_direction(&left_motor, true, speed, steering);
-            control_motor_direction(&right_motor, true, speed, steering);
+
+        case STEER_BACKWARD_LEFT:
+            control_motor_direction(&left_motor, false, left_target_speed);
+            control_motor_direction(&right_motor, false, right_target_speed);
+            break;
+
+        case STEER_BACKWARD_RIGHT:
+            control_motor_direction(&left_motor, false, left_target_speed);
+            control_motor_direction(&right_motor, false, right_target_speed);
             break;
 
         case STOP:
@@ -322,7 +300,7 @@ void move_car(MovementDirection direction, float speed, float angle, int steerin
 // PID control task that stabilse car when moving forward
 void pid_update_task(void *pvParameters) {
     while (1) {
-        if (current_movement == FORWARD || current_movement == BACKWARD) {
+        if (current_movement != STOP || current_movement != PIVOT_LEFT || current_movement != PIVOT_RIGHT) {
             // Only adjust if the target speed is greater than zero
             if (left_motor.target_speed > 0 || right_motor.target_speed > 0) {
                 // Update the PID output for left motor
@@ -344,13 +322,8 @@ void pid_update_task(void *pvParameters) {
                 }
             } 
         } 
-        
-        else {
-            // If the robot is stopped, skip PID calculations and wait before checking again
-            vTaskDelay(pdMS_TO_TICKS(500)); // Adjust the delay as needed
-        }   
             
-        vTaskDelay(pdMS_TO_TICKS(30)); // Adjust delay as needed for responsiveness
+        vTaskDelay(pdMS_TO_TICKS(50)); // Adjust delay as needed for responsiveness
     }
 }
 
@@ -372,7 +345,7 @@ void init_motor() {
 
     // Create PID update task for maintaining speed alignment between wheels
     xTaskCreate(pid_update_task, "PID Update", configMINIMAL_STACK_SIZE, NULL, tskIDLE_PRIORITY + 1, NULL);
-    xTaskCreate(control_motor_on_line_task, "Control Motor on Line", configMINIMAL_STACK_SIZE, NULL, tskIDLE_PRIORITY + 1, NULL);
+    // xTaskCreate(control_motor_on_line_task, "Control Motor on Line", configMINIMAL_STACK_SIZE, NULL, tskIDLE_PRIORITY + 1, NULL);
 }
 
 

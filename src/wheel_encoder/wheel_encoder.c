@@ -111,8 +111,8 @@ float get_left_distance() {
     if (xQueuePeek(left_encoder_queue, &data, 0) == pdTRUE) {
         float distance_per_pulse = WHEEL_CIRCUMFERENCE / PULSES_PER_REVOLUTION;
         distance = distance_per_pulse * (float)data.pulse_count;
-        printf("Left Distance - Pulses: %lu, Distance Per Hole: %.2f, Distance: %.2f cm\n",
-               data.pulse_count, distance_per_pulse, distance);
+        // printf("Left Distance - Pulses: %lu, Distance Per Hole: %.2f, Distance: %.2f cm\n",
+               // data.pulse_count, distance_per_pulse, distance);
     }
 
     return distance;
@@ -126,8 +126,8 @@ float get_right_distance() {
     if (xQueuePeek(right_encoder_queue, &data, 0) == pdTRUE) {
         float distance_per_pulse = WHEEL_CIRCUMFERENCE / PULSES_PER_REVOLUTION;
         distance = distance_per_pulse * (float)data.pulse_count;
-        printf("Right Distance - Pulses: %lu, Distance Per Hole: %.2f, Distance: %.2f cm\n",
-               data.pulse_count, distance_per_pulse, distance );
+        // printf("Right Distance - Pulses: %lu, Distance Per Hole: %.2f, Distance: %.2f cm\n",
+               // data.pulse_count, distance_per_pulse, distance );
     } 
     return distance;
 }
@@ -146,15 +146,15 @@ float get_left_speed() {
                 float distance_per_pulse = WHEEL_CIRCUMFERENCE / PULSES_PER_REVOLUTION;
                 speed = (distance_per_pulse * count_diff) / time_diff;  // Speed in cm/s
                 printf("Left Speed: %.2f cm/s (count diff: %.1f, time diff: %.6f s)\n", 
-                       speed, count_diff, time_diff);
+                        speed, count_diff, time_diff);
             }
 
             left_last_data = current;
         } else {
-            printf("No pulse count change detected for left encoder\n");
+            // printf("No pulse count change detected for left encoder\n");
         }
     } else {
-        printf("No data available in left encoder queue\n");
+        // printf("No data available in left encoder queue\n");
     }
 
 
@@ -175,15 +175,15 @@ float get_right_speed() {
                 float distance_per_pulse = WHEEL_CIRCUMFERENCE / PULSES_PER_REVOLUTION;
                 speed = (distance_per_pulse * count_diff) / time_diff;  // Speed in cm/s
                 printf("Right Speed: %.2f cm/s (count diff: %.1f, time diff: %.6f s)\n", 
-                       speed, count_diff, time_diff);
+                        speed, count_diff, time_diff);
             } 
 
             right_last_data = current;
         } else {
-            printf("No pulse count change detected for right encoder\n");
+            // printf("No pulse count change detected for right encoder\n");
         }
     } else {
-        printf("No data available in right encoder queue\n");
+        // printf("No data available in right encoder queue\n");
     }
 
     return speed;

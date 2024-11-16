@@ -14,7 +14,10 @@ uint8_t line_buffer_index = 0;
 // Queue handle for message passing
 QueueHandle_t xDisplayQueue;
 
-volatile bool black_line_detected = false;
+
+volatile bool black_line_detected = false; // Global variable to store status of black line detection
+volatile int stop_running = 0; // Global variable to store count of cycles that black line have not been detected
+volatile bool autonomous_running = false; // Global variable to store status of autonomous running
 
 // Threshold variables
 static uint32_t min_threshold = 4095;
@@ -68,32 +71,28 @@ void vLineFollowingTask(void *pvParameters) {
     }
 }
 
-/* void control_motor_on_line_task(void *pvParameters) {
+void control_motor_on_line_task(void *pvParameters) {
     while (1) {
         // Check if line following mode is active
         if (black_line_detected) {
-            // Line is detected; move slightly to the right to stay on the line
-            set_motor_pwm(left_motor.pwm_pin, MAX_LINE_DUTY_CYCLE, 256.0f);
-            set_motor_pwm(right_motor.pwm_pin, MIN_LINE_DUTY_CYCLE, 256.0f);
-            vTaskDelay(pdMS_TO_TICKS(6000)); // Larger correction time as car keeps veering towards the left
-             else {
-                // Line not detected; move slightly to the left to search for the line
-                set_motor_pwm(left_motor.pwm_pin, MIN_LINE_DUTY_CYCLE, 256.0f);
-                set_motor_pwm(right_motor.pwm_pin, MAX_LINE_DUTY_CYCLE, 256.0f);
-                vTaskDelay(pdMS_TO_TICKS(200));
-
-                // If line still not detected; move to the right to search for the line
-                if (!black_line_detected) {
-                    set_motor_pwm(left_motor.pwm_pin, MAX_LINE_DUTY_CYCLE, 256.0f);
-                    set_motor_pwm(right_motor.pwm_pin, MIN_LINE_DUTY_CYCLE, 256.0f);
-                    vTaskDelay(pdMS_TO_TICKS(6000)); // // Larger correction time as car keeps veering towards the left
-                }  
-            }
-            stop_running += 1;
+            // Line is detected; MOVE FORWARD to stay on the line
+            move_car(FORWARD, 10, 0, 0);
+            autonomous_running = true;
+            stop_running = 0;
+        } else {      
+            // Line not detected; STEER LEFT to search for the line
+            move_car(STEER_FORWARD_LEFT, 10, 15, 0);
+            vTaskDelay(pdMS_TO_TICKS(200));
+            // If line still not detected; STEER RIGHT to search for the line
+            if (!black_line_detected) {
+                move_car(STEER_FORWARD_RIGHT, 15, 10, 0);
+                vTaskDelay(pdMS_TO_TICKS(200)); 
+            }  
         }
+            stop_running += 1;
         vTaskDelay(pdMS_TO_TICKS(10)); // Short delay for responsive line checking
     }
-} */
+}
 
 
 // Function to initialize the ADC for Line Following
@@ -102,5 +101,6 @@ void init_line_sensor() {
     adc_gpio_init(LINE_SENSOR_PIN);
 
     xTaskCreate(vLineFollowingTask, "Line Following Task", configMINIMAL_STACK_SIZE, NULL, tskIDLE_PRIORITY + 1, NULL);
+    xTaskCreate(control_motor_on_line_task, "Control Motor on Line", configMINIMAL_STACK_SIZE, NULL, tskIDLE_PRIORITY + 1, NULL);
 }
 

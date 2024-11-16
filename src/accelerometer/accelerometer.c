@@ -160,10 +160,10 @@ int map_to_ascii_range(int value, int in_min, int in_max, int ascii_min, int asc
 // Example of how to use it in your send_direction_and_intensity function:
 void send_direction_and_intensity(struct udp_pcb* pcb, const ip_addr_t* addr, int speed, int steering) {
     // Map speed (-212 to 212) to ASCII range (0 to 41) with 20 as neutral
-    int ascii_speed = map_to_ascii_range(speed, -20, 20, 0, 40, 20);
+    int ascii_speed = map_to_ascii_range(speed, -20, 20, 1, 41, 21);
     
     // Map steering (-80 to 80) to ASCII range (42 to 83) with 62 as neutral
-    int ascii_steering = map_to_ascii_range(steering, -20, 20, 0, 40, 20);
+    int ascii_steering = map_to_ascii_range(steering, -20, 20, 1, 41, 21);
     
     char msg[MSG_MAX_LEN];
     snprintf(msg, MSG_MAX_LEN, "%c%c", (char)ascii_speed, (char)ascii_steering);

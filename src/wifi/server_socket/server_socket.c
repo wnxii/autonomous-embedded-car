@@ -57,10 +57,10 @@ void handle_received_controls(const char *data)
     int ascii_steering = (unsigned char)data[1]; // Second byte for steering
 
     // Unmap speed (ASCII 0-40, neutral 20) back to -212 to 212
-    remote_target_speed = unmap_from_ascii_range(ascii_speed, 0, 40, -20, 20, 20);
+    remote_target_speed = unmap_from_ascii_range(ascii_speed, 1, 41, -20, 20, 21);
 
     // Unmap steering (ASCII 0-40, neutral 20) back to -80 to 80
-    remote_steering = unmap_from_ascii_range(ascii_steering, 0, 40, -20, 20, 20);
+    remote_steering = unmap_from_ascii_range(ascii_steering, 1, 41, -20, 20, 21);
 
     printf("Decoded values - Speed: %d, Steering: %d\n", remote_target_speed, remote_steering);
 
@@ -100,14 +100,14 @@ void run_server()
     while (true)
     {
         int recv_len = recvfrom(server_sock, buffer, sizeof(buffer) - 1, 0, (struct sockaddr *)&client_addr, &client_addr_len);
-        if (recv_len < 0) {
+        if (recv_len < 2) {
             printf("Failed to receive message: error %d\n", errno);
             continue;
         }
 
         printf("Message Length: %d\n", recv_len);
         buffer[recv_len] = '\0'; // Null-terminate the received string
-        printf("%s", buffer);
+        // printf("%s", buffer);
         handle_received_controls(buffer);
     }
 

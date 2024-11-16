@@ -25,21 +25,21 @@ void init_hardware() {
     init_motor();
     sleep_ms(1000);
 
-    printf("[3/7] INITIALIZING BARCODE SCANNER\n");
-    init_barcode();
-    sleep_ms(1000);
+    // printf("[3/7] INITIALIZING BARCODE SCANNER\n");
+    // init_barcode();
+    // sleep_ms(1000);
 
-    printf("[4/7] INITIALIZING LINE SENSOR\n");
-    init_line_sensor();
-    sleep_ms(1000);
+    // printf("[4/7] INITIALIZING LINE SENSOR\n");
+    // init_line_sensor();
+    // sleep_ms(1000);
 
     printf("[5/7] INITIALIZING ULTRASONIC SENSOR\n");
     init_ultrasonic_sensor();
     sleep_ms(1000);
 
-    printf("[6/7] INITIALIZING UDP CLIENT SOCKET\n");
-    init_barcode_wifi();
-    sleep_ms(1000);
+    // printf("[6/7] INITIALIZING UDP CLIENT SOCKET\n");
+    // init_barcode_wifi();
+    // sleep_ms(1000);
 
     printf("[7/7] INITIALIZING UDP SERVER SOCKET\n");
     init_server_socket();
@@ -112,9 +112,9 @@ void car_movement_task(void *pvParameters) {
     // Code for Remote Control
     while (1)
     {
-        control = map_remote_output_to_speed(remote_target_speed);
-        float target_speed = (control.left_wheel_speed + control.right_wheel_speed) / 2;
-        move_car(control.direction, target_speed, 0, 0);
+        control = map_remote_output_to_direction(remote_target_speed, remote_steering);
+        move_car(control.direction, control.left_wheel_speed, control.right_wheel_speed, 0);
+        vTaskDelay(50);
     }
 
     // Code for Autonomous Line Following and Barcode Scanning
