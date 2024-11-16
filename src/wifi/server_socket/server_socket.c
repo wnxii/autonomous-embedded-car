@@ -10,8 +10,8 @@
 #include "server_socket.h"
 
 #define TEST_TASK_PRIORITY (tskIDLE_PRIORITY + 2UL)
-#define WIFI_SSID "yongjun"
-#define WIFI_PASSWORD "pewpew1234"
+#define WIFI_SSID "liangfannn"
+#define WIFI_PASSWORD "saypleasethankyou"
 
 int remote_target_speed = 0;
 int remote_steering = 0;
@@ -57,10 +57,10 @@ void handle_received_controls(const char *data)
     int ascii_steering = (unsigned char)data[1]; // Second byte for steering
 
     // Unmap speed (ASCII 0-40, neutral 20) back to -212 to 212
-    remote_target_speed = unmap_from_ascii_range(ascii_speed, 0, 40, -20, 20, 0);
+    remote_target_speed = unmap_from_ascii_range(ascii_speed, 0, 40, -20, 20, 20);
 
     // Unmap steering (ASCII 0-40, neutral 20) back to -80 to 80
-    remote_steering = unmap_from_ascii_range(ascii_steering, 0, 40, -20, 20, 0);
+    remote_steering = unmap_from_ascii_range(ascii_steering, 0, 40, -20, 20, 20);
 
     printf("Decoded values - Speed: %d, Steering: %d\n", remote_target_speed, remote_steering);
 

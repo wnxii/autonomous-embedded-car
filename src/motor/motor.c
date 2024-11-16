@@ -99,9 +99,9 @@ void control_motor_direction(MotorConfig* motor, bool forward, float target_spee
     motor->current_speed = (motor == &left_motor) ? get_left_speed() : get_right_speed();
     printf("Current speed from encoder: %.2f\n", motor->current_speed);
 
-    
 
-    set_motor_pwm(motor->pwm_pin, MAX_DUTY_CYCLE, 256.0f);
+
+    // set_motor_pwm(motor->pwm_pin, MAX_DUTY_CYCLE, 256.0f);
 }
 
 // Task that aligns car based on line detection

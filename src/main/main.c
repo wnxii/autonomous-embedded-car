@@ -19,10 +19,10 @@
 void init_hardware() {
     init_wheel_encoders();
     init_motor();
-    init_barcode_wifi();
-    init_barcode();
-    init_line_sensor();
-    init_ultrasonic_sensor();
+    // init_barcode_wifi();
+    // init_barcode();
+    // init_line_sensor();
+    // init_ultrasonic_sensor();
     init_server_socket();
 }
 
