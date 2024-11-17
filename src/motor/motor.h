@@ -27,9 +27,10 @@
 #define KI 0.002f 
 #define KD 0.006f  */
 
+// PID Constants (Tuned at home. Car can move straight with some deviations and more responsive during steering)
 #define KP 0.01f 
-#define KI 0.000f 
-#define KD 0.000f
+#define KI 0.003f 
+#define KD 0.005f
 
 #define M_PI 3.14159265358979323846
 

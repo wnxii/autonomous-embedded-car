@@ -142,25 +142,17 @@ void car_movement_task(void *pvParameters) {
         }
 
         vTaskDelay(50);
-    }
+    } 
 
     // Code for Autonomous Line Following and Barcode Scanning
-    /* const int lost_line_threshold = 30; // Number of cycles without line detection before stopping
     
-    while(1) {
-        if(connected) {// Check that car is connected to Wifi and server
-
-            // move_car(MOTOR_ON_LINE, 10.0, 0); // Enable line following
-            
-            while (stop_running <= lost_line_threshold) { // Stop line following once car have gone past the line
-                vTaskDelay(50);
-            }
-
-            // move_car(STOP, 0.0f, 0.0f); // Stop the car
-            printf("Line lost consistently. Stopping the car.\n");
-
-            break; // Exit the task if no recovery is expected
-        } 
+/*     while(1) {
+        move_car(FORWARD, 35.0, 35.0, 0.0);
+        if (is_obstacle_detected(SAFETY_THRESHOLD)) {
+            obstacle_detected = true;
+            move_car(STOP, 0.0, 0.0, 0.0); // Stop the car immediately
+            break;
+        }
     } */
 }
 
