@@ -31,21 +31,21 @@ void init_hardware() {
     // init_barcode();
     // sleep_ms(1000);
 
-    // printf("[4/7] INITIALIZING LINE SENSOR\n");
-    // init_line_sensor();
-    // sleep_ms(1000);
+    /* printf("[4/7] INITIALIZING LINE SENSOR\n");
+    init_line_sensor();
+    sleep_ms(1000); */
 
-    printf("[5/7] INITIALIZING ULTRASONIC SENSOR\n");
+    /* printf("[5/7] INITIALIZING ULTRASONIC SENSOR\n");
     init_ultrasonic_sensor();
-    sleep_ms(1000);
+    sleep_ms(1000); */
 
     // printf("[6/7] INITIALIZING UDP CLIENT SOCKET\n");
     // init_barcode_wifi();
     // sleep_ms(1000);
 
-    printf("[7/7] INITIALIZING UDP SERVER SOCKET\n");
+    /* printf("[7/7] INITIALIZING UDP SERVER SOCKET\n");
     init_server_socket();
-    sleep_ms(1000);
+    sleep_ms(1000); */
 
     printf("HARDWARE INITIALIZATION COMPLETE\n");
 }
@@ -109,7 +109,7 @@ float get_average_distance() {
 // Task for car movement
 void car_movement_task(void *pvParameters) {
     // Initialize movement system
-    MotorControl control;
+/*     MotorControl control;
     
     // Code for Remote Control
     while (true)
@@ -143,17 +143,12 @@ void car_movement_task(void *pvParameters) {
 
         vTaskDelay(50);
     } 
-
+ */
     // Code for Autonomous Line Following and Barcode Scanning
     
-/*     while(1) {
-        move_car(FORWARD, 35.0, 35.0, 0.0);
-        if (is_obstacle_detected(SAFETY_THRESHOLD)) {
-            obstacle_detected = true;
-            move_car(STOP, 0.0, 0.0, 0.0); // Stop the car immediately
-            break;
-        }
-    }  */
+    while(1) {
+        move_car(FORWARD, 20.0, 20.0, 0.0);
+    }  
 }
 
 // Main function
