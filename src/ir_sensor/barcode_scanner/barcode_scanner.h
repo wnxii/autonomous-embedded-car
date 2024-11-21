@@ -28,6 +28,7 @@ void vDisplayTask(void *pvParameters);
 void init_barcode(void);
 void init_button();
 void reset_barcode();
+float get_barcode_moving_average_adc();
 
 // extern char barcode_char;              // Character variable to store scanned and parsed barcode character
 // extern volatile bool scanning_allowed; // Boolean to indicate when scanning is allowed

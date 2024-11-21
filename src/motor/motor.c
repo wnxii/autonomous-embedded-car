@@ -39,7 +39,7 @@ void set_motor_pwm(uint gpio, float duty_cycle, float freq) {
     pwm_set_clkdiv(slice_num, divider);
     pwm_set_wrap(slice_num, 65535);
     
-    printf("Setting PWM on GPIO %d with duty cycle %.2f\n", gpio, duty_cycle);
+    // printf("Setting PWM on GPIO %d with duty cycle %.2f\n", gpio, duty_cycle);
 
     pwm_set_chan_level(slice_num, pwm_gpio_to_channel(gpio), duty_cycle * 65535);
 
@@ -49,7 +49,7 @@ void set_motor_pwm(uint gpio, float duty_cycle, float freq) {
 // PID calculation function
 float calculate_pid(float set_point, float current_value, PIDState* pid_state) {
     float error = set_point - current_value;
-    printf("Calculating PID: Set Point = %.2f, Current Value = %.2f, Error = %.2f\n", set_point, current_value, error);
+    // printf("Calculating PID: Set Point = %.2f, Current Value = %.2f, Error = %.2f\n", set_point, current_value, error);
 
     // Proportional term
     float p_term = (KP * error);
@@ -78,14 +78,14 @@ float calculate_pid(float set_point, float current_value, PIDState* pid_state) {
         corrected_speed = MIN_DUTY_CYCLE;
     }
 
-    printf("PID output = %.2f (P: %.2f, I: %.2f, D: %.2f)\n", corrected_speed, p_term, i_term, d_term);
+    // printf("PID output = %.2f (P: %.2f, I: %.2f, D: %.2f)\n", corrected_speed, p_term, i_term, d_term);
     return corrected_speed;
 }
 
 // Control motor forward, backward, steer left, steer right
 void control_motor_direction(MotorConfig* motor, bool forward, float target_speed) {
     // printf("Controlling motor on PWM pin %d - %s\n", motor->pwm_pin, (motor == &left_motor) ? "Left motor" : "Right motor");
-    printf("Setting Target Speed (%.2f) on - %s\n", target_speed, (motor == &left_motor) ? "Left motor" : "Right motor");
+    // printf("Setting Target Speed (%.2f) on - %s\n", target_speed, (motor == &left_motor) ? "Left motor" : "Right motor");
 
     gpio_put(motor->dir_pin1, !forward);
     gpio_put(motor->dir_pin2, forward);
@@ -120,6 +120,8 @@ float get_angle_turned_pivot() {
 void pivot_turn_control_task(void *pvParameters) {
     float target_angle = *(float *)pvParameters;
     MovementDirection direction = current_movement;
+    reset_left_encoder();
+    reset_right_encoder();
     
     // Turn until the angle is reached (+-5.0) 
     float current_angle = 0.0f;
@@ -136,8 +138,8 @@ void pivot_turn_control_task(void *pvParameters) {
             gpio_put(right_motor.dir_pin1, 1);
             gpio_put(right_motor.dir_pin2, 0);
             
-            set_motor_pwm(left_motor.pwm_pin, MAX_DUTY_CYCLE, 1000.0f);
-            set_motor_pwm(right_motor.pwm_pin, MAX_DUTY_CYCLE, 1000.0f);
+            set_motor_pwm(left_motor.pwm_pin, MAX_DUTY_CYCLE-0.4, 1000.0f);
+            set_motor_pwm(right_motor.pwm_pin, MAX_DUTY_CYCLE-0.4, 1000.0f);
                 
         } else if (direction == PIVOT_LEFT) {
             // Apply forward and reverse direction to left and right motor respectively for left turn
@@ -146,8 +148,8 @@ void pivot_turn_control_task(void *pvParameters) {
             gpio_put(right_motor.dir_pin1, 0);
             gpio_put(right_motor.dir_pin2, 1);
 
-            set_motor_pwm(left_motor.pwm_pin, MAX_DUTY_CYCLE, 1000.0f); 
-            set_motor_pwm(right_motor.pwm_pin, MAX_DUTY_CYCLE, 1000.0f); 
+            set_motor_pwm(left_motor.pwm_pin, MAX_DUTY_CYCLE-0.3, 1000.0f); 
+            set_motor_pwm(right_motor.pwm_pin, MAX_DUTY_CYCLE-0.3, 1000.0f); 
         }
 
         // Update current angle based on encoder data
