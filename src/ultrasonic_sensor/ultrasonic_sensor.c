@@ -17,10 +17,42 @@
 // FreeRTOS handles
 static QueueHandle_t distance_queue;
 SemaphoreHandle_t measurement_mutex;
-volatile MeasurementData current_measurement = {0, 0, false, false};
 
 // External queue declaration
 extern QueueHandle_t xServerQueue;
+
+// Function to measure distance using polling
+float get_pulse_duration() {
+    uint64_t start_time = 0;
+    uint64_t end_time = 0;
+    
+    // Generate trigger pulse
+    gpio_put(TRIGGER_PIN, 1);
+    busy_wait_us(10);
+    gpio_put(TRIGGER_PIN, 0);
+    
+    // Wait for echo to go high
+    uint32_t timeout_start = time_us_32();
+    while (!gpio_get(ECHO_PIN)) {
+        if (time_us_32() - timeout_start > 30000) {  // 30ms timeout
+            printf("[DEBUG] Timeout waiting for echo start\n");
+            return -1;
+        }
+    }
+    start_time = time_us_64();
+    
+    // Wait for echo to go low
+    timeout_start = time_us_32();
+    while (gpio_get(ECHO_PIN)) {
+        if (time_us_32() - timeout_start > 30000) {  // 30ms timeout
+            printf("[DEBUG] Timeout waiting for echo end\n");
+            return -1;
+        }
+    }
+    end_time = time_us_64();
+    
+    return (float)(end_time - start_time);
+}
 
 void ultrasonic_task(void *params) {
     printf("[DEBUG] Starting ultrasonic task\n");
@@ -34,61 +66,27 @@ void ultrasonic_task(void *params) {
     TickType_t last_wake_time = xTaskGetTickCount();
     float distance;
     char message[100];
+    uint32_t measurement_count = 0;
     
     while (1) {
-        // Reset measurement state
-        if (xSemaphoreTake(measurement_mutex, portMAX_DELAY) == pdTRUE) {
-            current_measurement.start_time = 0;
-            current_measurement.end_time = 0;
-            current_measurement.measurement_done = false;
-            current_measurement.waiting_for_echo = true;
-            xSemaphoreGive(measurement_mutex);
-        }
+        measurement_count++;
+        printf("[DEBUG] Starting ultrasonic measurement #%lu\n", measurement_count);
         
-        // Trigger pulse with precise timing
-        gpio_put(TRIGGER_PIN, 0);
-        busy_wait_us(5);  // 5us LOW to ensure clean pulse
-        gpio_put(TRIGGER_PIN, 1);
-        busy_wait_us(10); // Exactly 10us pulse
-        gpio_put(TRIGGER_PIN, 0);
-        
-        // Wait for measurement with longer timeout
-        TickType_t start_tick = xTaskGetTickCount();
-        bool timeout = false;
-        bool measurement_complete = false;
-        
-        while (!measurement_complete && !timeout) {
-            if (xSemaphoreTake(measurement_mutex, pdMS_TO_TICKS(10)) == pdTRUE) {
-                measurement_complete = current_measurement.measurement_done;
-                xSemaphoreGive(measurement_mutex);
-            }
-            
-            if ((xTaskGetTickCount() - start_tick) > pdMS_TO_TICKS(100)) { // Increased timeout to 100ms
-                timeout = true;
-            }
-            
-            vTaskDelay(1);
-        }
+        // Get pulse duration
+        float duration = get_pulse_duration();
         
         // Calculate distance
-        if (measurement_complete) {
-            if (xSemaphoreTake(measurement_mutex, portMAX_DELAY) == pdTRUE) {
-                uint64_t duration = current_measurement.end_time - current_measurement.start_time;
-                
-                if (duration > 150 && duration < 25000) {
-                    distance = (duration * 0.0343) / 2.0;
-                    
-                    if (distance > MAX_DISTANCE) {
-                        distance = -1.0f;
-                    }
-                } else {
-                    distance = -1.0f;
-                }
-                
-                xSemaphoreGive(measurement_mutex);
+        if (duration > 0) {
+            distance = (duration * 0.0343) / 2.0;
+            if (distance > MAX_DISTANCE) {
+                distance = -1.0f;
+                printf("[DEBUG] Distance exceeds max range\n");
+            } else {
+                printf("[DEBUG] Valid distance measured: %.2f cm (duration: %.2f us)\n", distance, duration);
             }
         } else {
             distance = -1.0f;
+            printf("[DEBUG] Invalid measurement\n");
         }
         
         // Update distance queue
@@ -96,7 +94,7 @@ void ultrasonic_task(void *params) {
         while (xQueueReceive(distance_queue, &prev_distance, 0) == pdTRUE);
         xQueueSend(distance_queue, &distance, 0);
 
-        // Send to UDP queue periodically
+        // Send to UDP queue
         bool obstacle = (distance > 0 && distance <= 30.0f);
         snprintf(message, sizeof(message), "ULTRA:DIST=%.2f,OBS=%d", distance, obstacle);
         if (xQueueSend(xServerQueue, &message, 0) != pdTRUE) {
@@ -105,7 +103,7 @@ void ultrasonic_task(void *params) {
             printf("[DEBUG] Sent ultrasonic data: Distance=%.2f cm, Obstacle=%d\n", distance, obstacle);
         }
         
-        // Run every 200ms to allow more time for echo
+        // Run every 200ms
         vTaskDelayUntil(&last_wake_time, pdMS_TO_TICKS(200));
     }
 }
@@ -121,13 +119,6 @@ void init_ultrasonic_sensor() {
     }
     printf("[DEBUG] Created distance queue\n");
     
-    measurement_mutex = xSemaphoreCreateMutex();
-    if (measurement_mutex == NULL) {
-        printf("[ERROR] Failed to create measurement mutex\n");
-        return;
-    }
-    printf("[DEBUG] Created measurement mutex\n");
-    
     // Initialize GPIO
     gpio_init(TRIGGER_PIN);
     gpio_init(ECHO_PIN);
@@ -136,7 +127,7 @@ void init_ultrasonic_sensor() {
     
     // Start with trigger pin low
     gpio_put(TRIGGER_PIN, 0);
-    printf("[DEBUG] GPIO initialized\n");
+    printf("[DEBUG] GPIO initialized (Trigger: %d, Echo: %d)\n", TRIGGER_PIN, ECHO_PIN);
     
     // Create ultrasonic task
     TaskHandle_t ultrasonic_handle = NULL;

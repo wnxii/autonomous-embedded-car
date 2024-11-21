@@ -38,24 +38,6 @@ void sensors_callback(uint gpio, uint32_t events) {
             xSemaphoreGiveFromISR(right_data_mutex, &xHigherPriorityTaskWoken);
         }
     } 
-    else if (gpio == ECHO_PIN) {
-        uint64_t current_time = time_us_64();
-        
-        if (xSemaphoreTakeFromISR(measurement_mutex, &xHigherPriorityTaskWoken) == pdTRUE) {
-            if (events & GPIO_IRQ_EDGE_RISE) {
-                if (current_measurement.waiting_for_echo) {
-                    current_measurement.start_time = current_time;
-                }
-            } else if (events & GPIO_IRQ_EDGE_FALL) {
-                if (current_measurement.start_time > 0) {
-                    current_measurement.end_time = current_time;
-                    current_measurement.measurement_done = true;
-                    current_measurement.waiting_for_echo = false;
-                }
-            }
-            xSemaphoreGiveFromISR(measurement_mutex, &xHigherPriorityTaskWoken);
-        }
-    }
     else if (gpio == BTN_PIN && (events & GPIO_IRQ_EDGE_FALL)) {
         // Button press handling is done in the button task using polling
         // This is just to properly register the interrupt
@@ -77,18 +59,23 @@ void init_gpio_interrupts() {
     gpio_set_dir(RIGHT_ENCODER_PIN, GPIO_IN);
     gpio_pull_up(RIGHT_ENCODER_PIN);
 
-    gpio_init(ECHO_PIN);
-    gpio_set_dir(ECHO_PIN, GPIO_IN);
-
     gpio_init(BTN_PIN);
     gpio_set_dir(BTN_PIN, GPIO_IN);
     gpio_pull_up(BTN_PIN);
 
     // Set up GPIO interrupts with callback for all pins that need interrupts
+    printf("[DEBUG] Setting up interrupts...\n");
+    
+    // First pin sets up the callback
     gpio_set_irq_enabled_with_callback(LEFT_ENCODER_PIN, GPIO_IRQ_EDGE_RISE | GPIO_IRQ_EDGE_FALL, true, &sensors_callback);
+    printf("[DEBUG] Left encoder interrupt set\n");
+    
+    // Rest of the pins just enable interrupts (callback is already set)
     gpio_set_irq_enabled(RIGHT_ENCODER_PIN, GPIO_IRQ_EDGE_RISE | GPIO_IRQ_EDGE_FALL, true);
-    gpio_set_irq_enabled(ECHO_PIN, GPIO_IRQ_EDGE_RISE | GPIO_IRQ_EDGE_FALL, true);
+    printf("[DEBUG] Right encoder interrupt set\n");
+    
     gpio_set_irq_enabled(BTN_PIN, GPIO_IRQ_EDGE_FALL, true);
+    printf("[DEBUG] Button interrupt set\n");
 
     printf("[DEBUG] GPIO interrupts initialized\n");
 }
