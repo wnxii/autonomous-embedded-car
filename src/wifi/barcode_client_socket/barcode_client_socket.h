@@ -9,7 +9,7 @@ extern QueueHandle_t xUltrasonicQueue;
 extern volatile int remote_target_speed;
 extern volatile int remote_steering;
 
-void init_barcode_wifi(void);
+void init_wifi(void);
 void init_sensor_queues(void);  // New function to initialize queues early
 
 #endif

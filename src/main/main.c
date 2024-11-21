@@ -12,7 +12,6 @@
 #include "../ir_sensor/barcode_scanner/barcode_scanner.h"
 #include "../ir_sensor/line_following/line_following.h"
 #include "../wifi/barcode_client_socket/barcode_client_socket.h"
-// #include "../wifi/server_socket/server_socket.h"
 #include "../ultrasonic_sensor/ultrasonic_sensor.h"
 #include "main.h"
 
@@ -83,37 +82,33 @@ void init_gpio_interrupts() {
 // Init all sensors required for station 2
 void init_hardware() {
     // Initialize queues first so they're available for all tasks
-    printf("[DEBUG] [1/8] INITIALIZING SENSOR QUEUES\n");
+    printf("[DEBUG] [1/7] INITIALIZING SENSOR QUEUES\n");
     init_sensor_queues();
     sleep_ms(1000);
 
-    printf("[DEBUG] [2/8] INITIALIZING WHEEL ENCODERS\n");
+    printf("[DEBUG] [2/7] INITIALIZING WHEEL ENCODERS\n");
     init_wheel_encoders();
     sleep_ms(1000);
 
-    printf("[DEBUG] [3/8] INITIALIZING MOTOR\n");
+    printf("[DEBUG] [3/7] INITIALIZING MOTOR\n");
     init_motor();
     sleep_ms(1000);
 
-    printf("[DEBUG] [4/8] INITIALIZING BARCODE SCANNER\n");
+    printf("[DEBUG] [4/7] INITIALIZING BARCODE SCANNER\n");
     init_barcode();
     sleep_ms(1000);
 
-    printf("[DEBUG] [5/8] INITIALIZING LINE SENSOR\n");
+    printf("[DEBUG] [5/7] INITIALIZING LINE SENSOR\n");
     // init_line_sensor();
     sleep_ms(1000);
 
-    printf("[DEBUG] [6/8] INITIALIZING ULTRASONIC SENSOR\n");
+    printf("[DEBUG] [6/7] INITIALIZING ULTRASONIC SENSOR\n");
     init_ultrasonic_sensor();
     sleep_ms(1000);
 
-    printf("[DEBUG] [7/8] INITIALIZING UDP CLIENT SOCKET\n");
-    init_barcode_wifi();
+    printf("[DEBUG] [7/7] INITIALIZING UDP CLIENT SOCKET\n");
+    init_wifi();
     sleep_ms(1000);
-
-    // printf("[8/8] INITIALIZING UDP SERVER SOCKET\n");
-    // init_server_socket();
-    // sleep_ms(1000);
 
     printf("[DEBUG] HARDWARE INITIALIZATION COMPLETE\n");
 }

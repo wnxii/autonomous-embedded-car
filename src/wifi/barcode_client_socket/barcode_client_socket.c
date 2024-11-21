@@ -154,7 +154,7 @@ void init_sensor_queues() {
     printf("[DEBUG] Created server queue successfully\n");
 }
 
-void init_barcode_wifi() {
+void init_wifi() {
     printf("[DEBUG] Creating WiFi task...\n");
     xTaskCreate(wifi_task, "client_task", 4096, NULL, TEST_TASK_PRIORITY, NULL);
     printf("[DEBUG] WiFi task created successfully\n");
