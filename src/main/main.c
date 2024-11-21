@@ -1,3 +1,4 @@
+#include "pico/cyw43_arch.h"
 #include "FreeRTOS.h"
 #include "task.h"
 #include "pico/stdlib.h"
@@ -11,7 +12,7 @@
 #include "../ir_sensor/barcode_scanner/barcode_scanner.h"
 #include "../ir_sensor/line_following/line_following.h"
 #include "../wifi/barcode_client_socket/barcode_client_socket.h"
-#include "../wifi/server_socket/server_socket.h"
+// #include "../wifi/server_socket/server_socket.h"
 #include "../ultrasonic_sensor/ultrasonic_sensor.h"
 #include "main.h"
 
@@ -43,9 +44,9 @@ void init_hardware() {
     init_barcode_wifi();
     sleep_ms(1000);
 
-    printf("[7/7] INITIALIZING UDP SERVER SOCKET\n");
-    init_server_socket();
-    sleep_ms(1000);
+    // printf("[7/7] INITIALIZING UDP SERVER SOCKET\n");
+    // init_server_socket();
+    // sleep_ms(1000);
 
     printf("HARDWARE INITIALIZATION COMPLETE\n");
 }

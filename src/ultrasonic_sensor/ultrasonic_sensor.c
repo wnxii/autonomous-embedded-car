@@ -91,7 +91,7 @@ void ultrasonic_task(void *params) {
             bool obstacle = (distance > 0 && distance <= 30.0f); // 30cm safety threshold
             snprintf(message, sizeof(message), "DIST=%.2f,OBS=%d", distance, obstacle);
             xQueueSend(xUltrasonicQueue, &message, 0);
-            printf("Ultrasonic Distance: %.2f cm, Obstacle: %d\n", distance, obstacle);
+            // printf("Ultrasonic Distance: %.2f cm, Obstacle: %d\n", distance, obstacle);
         }
         
         // Run every 100ms
@@ -134,6 +134,6 @@ float measure_distance() {
 
 bool is_obstacle_detected(float safety_threshold) {
     float distance = measure_distance();
-    printf("Ultrasonic Distance: %f \n", distance);
+    // printf("Ultrasonic Distance: %f \n", distance);
     return (distance > 0 && distance <= safety_threshold);
 }

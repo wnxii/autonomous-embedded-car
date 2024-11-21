@@ -7,6 +7,8 @@
 // Queues for sensor data
 extern QueueHandle_t xWheelEncoderQueue;
 extern QueueHandle_t xUltrasonicQueue;
+extern int remote_target_speed;
+extern int remote_steering;
 
 // Connection status
 extern volatile bool connected;

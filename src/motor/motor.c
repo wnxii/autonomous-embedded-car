@@ -253,7 +253,7 @@ void stop_motor() {
 // Unified movement function
 void move_car(MovementDirection direction, float left_target_speed, float right_target_speed, float angle) {
     current_movement = direction; // Update current direction
-    printf("Moving car - Direction: %d, Left Target Speed: %.2f, Right Target Speed: %.2f\n", direction, left_target_speed, right_target_speed);
+    // printf("Moving car - Direction: %d, Left Target Speed: %.2f, Right Target Speed: %.2f\n", direction, left_target_speed, right_target_speed);
     switch(direction) {
         case FORWARD:
             control_motor_direction(&left_motor, true, left_target_speed);

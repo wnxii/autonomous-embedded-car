@@ -10,15 +10,12 @@
 #include "server_socket.h"
 
 #define TEST_TASK_PRIORITY (tskIDLE_PRIORITY + 2UL)
-#define WIFI_SSID "liangfannn"
-#define WIFI_PASSWORD "saypleasethankyou"
 
 int remote_target_speed = 0;
 int remote_steering = 0;
 
 // Helper function to unmap from one range to another
-int unmap(int value, int in_min, int in_max, int out_min, int out_max)
-{
+int unmap(int value, int in_min, int in_max, int out_min, int out_max) {
     long unmapped = (long)(value - in_min) * (out_max - out_min) / (in_max - in_min) + out_min;
     if (unmapped < out_min)
         return out_min;
@@ -28,8 +25,7 @@ int unmap(int value, int in_min, int in_max, int out_min, int out_max)
 }
 
 // Unmaps an ASCII value back to the original range
-int unmap_from_ascii_range(int ascii_value, int ascii_min, int ascii_max, int out_min, int out_max, int ascii_neutral)
-{
+int unmap_from_ascii_range(int ascii_value, int ascii_min, int ascii_max, int out_min, int out_max, int ascii_neutral) {
     // If ASCII value is neutral, return 0
     if (ascii_value == ascii_neutral)
     {
@@ -50,8 +46,7 @@ int unmap_from_ascii_range(int ascii_value, int ascii_min, int ascii_max, int ou
 }
 
 // Example usage in UDP receive callback:
-void handle_received_controls(const char *data)
-{
+void handle_received_controls(const char *data) {
     // Extract ASCII values
     int ascii_speed = (unsigned char)data[0];    // First byte for speed
     int ascii_steering = (unsigned char)data[1]; // Second byte for steering
@@ -71,8 +66,7 @@ void handle_received_controls(const char *data)
 }
 
 // Function to run the TCP server
-void run_server()
-{
+void run_server() {
     int server_sock = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
     if (server_sock < 0) {
         printf("Unable to create socket: error %d\n", errno);
@@ -114,25 +108,8 @@ void run_server()
     closesocket(server_sock);
 }
 
-static void server_task(void *params)
-{
-    if (cyw43_arch_init()) {
-        printf("Failed to initialize WiFi\n");
-        return;
-    }
-
-    cyw43_arch_enable_sta_mode();
-
-    printf("Connecting to WiFi...\n");
-
-    if (cyw43_arch_wifi_connect_timeout_ms(WIFI_SSID, WIFI_PASSWORD, CYW43_AUTH_WPA2_AES_PSK, 30000)) {
-        printf("Failed to connect to WiFi.\n");
-        return;
-    }
-    
-    printf("Connected to WiFi.\n");
+static void server_task(void *params) {
     run_server();
-    cyw43_arch_deinit();
 }
 
 void init_server_socket(void) {
