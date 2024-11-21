@@ -10,7 +10,7 @@
 // WIFI Credentials
 #define WIFI_SSID "liangfannn"
 #define WIFI_PASSWORD "saypleasethankyou"
-#define UDP_PORT 12345
+#define UDP_PORT 12346
 #define MAX_BUFFER_SIZE 1024
 
 // Function to print IP address
@@ -116,7 +116,11 @@ void udp_server_task(void *params) {
         char addr_str[16];
         inet_ntoa_r(client_addr.sin_addr, addr_str, sizeof(addr_str) - 1);
         
-        printf("\nReceived %d bytes from %s:%d\n", len, addr_str, ntohs(client_addr.sin_port));
+        // Print prominent connection message
+        printf("\n=================================\n");
+        printf("New client connected from %s:%d!\n", addr_str, ntohs(client_addr.sin_port));
+        printf("=================================\n");
+        printf("Received %d bytes from client\n", len);
         
         // Handle the received data
         handle_received_data(rx_buffer);

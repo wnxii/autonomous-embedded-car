@@ -11,8 +11,8 @@
 
 #define TEST_TASK_PRIORITY (tskIDLE_PRIORITY + 2UL)
 
-int remote_target_speed = 0;
-int remote_steering = 0;
+volatile int remote_target_speed = 0;
+volatile int remote_steering = 0;
 
 // Helper function to unmap from one range to another
 int unmap(int value, int in_min, int in_max, int out_min, int out_max) {

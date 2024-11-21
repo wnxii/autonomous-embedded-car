@@ -12,119 +12,79 @@
 #include "../../ir_sensor/barcode_scanner/barcode_scanner.h"
 
 // Wi-Fi and server configurations
-#define WIFI_SSID "liangfannn"
-#define WIFI_PASSWORD "saypleasethankyou"
-#define SERVER_IP "172.20.10.4"
+#define WIFI_SSID "yongjun"
+#define WIFI_PASSWORD "pewpew1234"
+#define SERVER_IP "172.20.10.3"
 #define SERVER_PORT 12346
 #define TEST_TASK_PRIORITY (tskIDLE_PRIORITY + 2UL)
 
-// Create queues for sensor data
-QueueHandle_t xWheelEncoderQueue;
-QueueHandle_t xUltrasonicQueue;
+// Global queue for all sensor data
+QueueHandle_t xServerQueue = NULL;
 
-// Connection status
-volatile bool connected = false;
-int remote_target_speed = 0;
-int remote_steering = 0;
+// Define the global variables
+volatile int remote_target_speed;
+volatile int remote_steering;
+volatile bool connected;
 
-// Helper function to unmap from one range to another
-int unmap(int value, int in_min, int in_max, int out_min, int out_max) {
-    long unmapped = (long)(value - in_min) * (out_max - out_min) / (in_max - in_min) + out_min;
-    if (unmapped < out_min)
-        return out_min;
-    if (unmapped > out_max)
-        return out_max;
-    return (int)unmapped;
-}
-
-// Unmaps an ASCII value back to the original range
-int unmap_from_ascii_range(int ascii_value, int ascii_min, int ascii_max, int out_min, int out_max, int ascii_neutral) {
-    // If ASCII value is neutral, return 0
-    if (ascii_value == ascii_neutral)
-    {
-        return 0;
-    }
-
-    // Determine if we're unmapping from the positive or negative range
-    if (ascii_value > ascii_neutral)
-    {
-        // Handle positive range
-        return unmap(ascii_value, ascii_neutral + 1, ascii_max, 1, out_max);
-    }
-    else
-    {
-        // Handle negative range
-        return unmap(ascii_value, ascii_min, ascii_neutral - 1, out_min, -1);
-    }
-}
-
-// Example usage in UDP receive callback:
 void handle_received_controls(const char *data) {
-    // Extract ASCII values
-    int ascii_speed = (unsigned char)data[0];    // First byte for speed
-    int ascii_steering = (unsigned char)data[1]; // Second byte for steering
-
-    // Unmap speed (ASCII 0-40, neutral 20) back to -212 to 212
-    remote_target_speed = unmap_from_ascii_range(ascii_speed, 1, 41, -20, 20, 21);
-
-    // Unmap steering (ASCII 0-40, neutral 20) back to -80 to 80
-    remote_steering = unmap_from_ascii_range(ascii_steering, 1, 41, -20, 20, 21);
-
-    printf("Decoded values - Speed: %d, Steering: %d\n", remote_target_speed, remote_steering);
-
-    // Now you can use speed and steering values to control your device
-    // For example:
-    // set_motor_speed(speed);
-    // set_steering_angle(steering);
+    int ascii_speed = (unsigned char)data[0];
+    int ascii_steering = (unsigned char)data[1];
+    remote_target_speed = ascii_speed - 21;
+    remote_steering = ascii_steering - 21;
 }
 
-// Send message over UDP socket
 static void send_message_udp(int socket, const char *msg, struct sockaddr_in *server_addr) {
+    if (!msg || strlen(msg) == 0) {
+        printf("[DEBUG] Attempted to send empty message\n");
+        return;
+    }
+
     int len = strlen(msg);
-    int sent = sendto(socket, msg, len, 0, (struct sockaddr *)server_addr, sizeof(*server_addr));
-    if (sent < 0) {
-        printf("Failed to send message. Error: %d\n", errno);
+    int result = sendto(socket, msg, len, 0, (struct sockaddr *)server_addr, sizeof(*server_addr));
+    if (result < 0) {
+        printf("[DEBUG] Failed to send UDP message: %d\n", result);
     } else {
-        printf("Sent %d bytes via UDP\n", sent);
+        printf("[DEBUG] Sent UDP message (%d bytes): %s\n", result, msg);
     }
 }
 
-// Function to create UDP socket
-static int create_udp_socket() {
-    int sock = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
-    if (sock < 0) {
-        printf("Unable to create UDP socket: error %d\n", errno);
-        return -1;
-    }
-    printf("UDP socket created\n");
-    return sock;
-}
-
-// Client task to receive and send all sensor data to the server
 void wifi_task(__unused void *params) {
+    remote_target_speed = 0;
+    remote_steering = 0;
+    connected = false;
+
+    // Initialize WiFi
+    printf("[DEBUG] Initializing WiFi...\n");
     if (cyw43_arch_init()) {
-        printf("Failed to initialize WiFi\n");
+        printf("[ERROR] Failed to initialize cyw43_arch\n");
         return;
     }
 
     cyw43_arch_enable_sta_mode();
-
-    printf("Connecting to WiFi...\n");
-
+    printf("[DEBUG] Connecting to WiFi...\n");
     if (cyw43_arch_wifi_connect_timeout_ms(WIFI_SSID, WIFI_PASSWORD, CYW43_AUTH_WPA2_AES_PSK, 30000)) {
-        printf("Failed to connect to WiFi.\n");
+        printf("[ERROR] Failed to connect to WiFi\n");
+        return;
     }
+    printf("[DEBUG] Connected to WiFi successfully\n");
 
-    int dashboard_sock = create_udp_socket();
+    // Create sockets
+    int dashboard_sock = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
     if (dashboard_sock < 0) {
-        printf("Failed to create Dashboard Client Socket\n");
+        printf("[ERROR] Failed to create dashboard socket\n");
+        return;
     }
+    printf("[DEBUG] Created dashboard socket\n");
 
     int remote_sock = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
     if (remote_sock < 0) {
-        printf("Failed to create Remote Control Socket: Error %d\n", errno);
+        printf("[ERROR] Failed to create remote socket\n");
+        closesocket(dashboard_sock);
+        return;
     }
+    printf("[DEBUG] Created remote socket\n");
 
+    // Bind remote socket
     struct sockaddr_in listen_addr = {
         .sin_family = AF_INET,
         .sin_port = htons(12345),
@@ -132,17 +92,13 @@ void wifi_task(__unused void *params) {
     };
 
     if (bind(remote_sock, (struct sockaddr *)&listen_addr, sizeof(listen_addr)) < 0) {
-        printf("Failed to bind Remote Control Socket: Error %d\n", errno);
+        printf("[ERROR] Failed to bind remote socket\n");
         closesocket(remote_sock);
+        closesocket(dashboard_sock);
+        return;
     }
+    printf("[DEBUG] Bound remote socket successfully\n");
 
-    printf("Starting UDP Remote Control Server at %s on port %u\n", ip4addr_ntoa(netif_ip4_addr(netif_list)), ntohs(listen_addr.sin_port));
-
-    struct sockaddr_in remote_client_addr;
-    socklen_t remote_client_addr_len = sizeof(remote_client_addr);
-    char buffer[512];
-
-    printf("Connecting to Dashboard Server...\n");
     // Set up server address
     struct sockaddr_in dashboard_server_addr = {
         .sin_family = AF_INET,
@@ -150,58 +106,56 @@ void wifi_task(__unused void *params) {
     };
     inet_aton(SERVER_IP, &dashboard_server_addr.sin_addr);
 
-    printf("Connected to Dashboard Server\n");
+    // Send initial connection message
     send_message_udp(dashboard_sock, "Connection From Pico Car", &dashboard_server_addr);
+    connected = true;
+    printf("[DEBUG] Sent initial connection message\n");
 
+    // Message buffers
+    struct sockaddr_in remote_client_addr;
+    socklen_t remote_client_addr_len = sizeof(remote_client_addr);
+    char buffer[512];
     char message[200];
-    char wheel_message[100];
-    char ultrasonic_message[100];
+
+    // Set socket timeout
+    struct timeval tv = {.tv_sec = 0, .tv_usec = 10000}; // 10ms timeout
+    setsockopt(remote_sock, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv));
+
+    TickType_t last_wake_time = xTaskGetTickCount();
+    const TickType_t sensor_check_period = pdMS_TO_TICKS(50); // Check sensors every 50ms
 
     while (true) {
-        // Handle Receive Controls from Remote Control Pico
-        int recv_len = recvfrom(remote_sock, buffer, sizeof(buffer) - 1, 0, (struct sockaddr *)&remote_client_addr, &remote_client_addr_len);
-        if (recv_len < 2) {
-            printf("Failed to receive message: error %d\n", errno);
-            continue;
+        // Handle remote control messages
+        int recv_len = recvfrom(remote_sock, buffer, sizeof(buffer) - 1, 0, 
+                               (struct sockaddr *)&remote_client_addr, &remote_client_addr_len);
+        if (recv_len >= 2) {
+            buffer[recv_len] = '\0';
+            handle_received_controls(buffer);
+            printf("[DEBUG] Received control message\n");
         }
-        buffer[recv_len] = '\0'; // Null-terminate the received string
-        handle_received_controls(buffer);
 
-        // Handle barcode data
-        if (xQueueReceive(xServerQueue, &message, 0)) {
-            snprintf(message, sizeof(message), "BARCODE:%s", message);
+        // Handle sensor data from xServerQueue
+        if (xQueueReceive(xServerQueue, &message, 0) == pdTRUE) {
             send_message_udp(dashboard_sock, message, &dashboard_server_addr);
-            printf("Sent barcode data: %s\n", message);
         }
 
-        // Handle wheel encoder data
-        if (xQueueReceive(xWheelEncoderQueue, &wheel_message, 0)) {
-            snprintf(message, sizeof(message), "WHEEL:%s", wheel_message);
-            send_message_udp(dashboard_sock, message, &dashboard_server_addr);
-            printf("Sent wheel encoder data: %s\n", message);
-        }
-
-        // Handle ultrasonic data
-        if (xQueueReceive(xUltrasonicQueue, &ultrasonic_message, 0)) {
-            snprintf(message, sizeof(message), "ULTRA:%s", ultrasonic_message);
-            send_message_udp(dashboard_sock, message, &dashboard_server_addr);
-            printf("Sent ultrasonic data: %s\n", message);
-        }
-
-        vTaskDelay(pdMS_TO_TICKS(10)); // Small delay to prevent tight loop
+        // Wait for next period
+        vTaskDelayUntil(&last_wake_time, sensor_check_period);
     }
+}
 
-    closesocket(remote_sock);
-    closesocket(dashboard_sock);
-    cyw43_arch_deinit();
+void init_sensor_queues() {
+    printf("[DEBUG] Creating server queue...\n");
+    xServerQueue = xQueueCreate(10, sizeof(char[200]));
+    if (xServerQueue == NULL) {
+        printf("[ERROR] Failed to create server queue\n");
+        return;
+    }
+    printf("[DEBUG] Created server queue successfully\n");
 }
 
 void init_barcode_wifi() {
-    // Create queues
-    xWheelEncoderQueue = xQueueCreate(5, sizeof(char[100]));
-    xUltrasonicQueue = xQueueCreate(5, sizeof(char[100]));
-
-    // Create client task
-    TaskHandle_t client_handle;
-    xTaskCreate(wifi_task, "client_task", 4096, NULL, TEST_TASK_PRIORITY, &client_handle);
+    printf("[DEBUG] Creating WiFi task...\n");
+    xTaskCreate(wifi_task, "client_task", 4096, NULL, TEST_TASK_PRIORITY, NULL);
+    printf("[DEBUG] WiFi task created successfully\n");
 }

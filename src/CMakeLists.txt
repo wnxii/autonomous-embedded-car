@@ -46,7 +46,7 @@ endif()
 # add_subdirectory(accelerometer)
 # add_subdirectory(wifi)
 # add_subdirectory(dashboard)
-# add_subdirectory(receiver)
+add_subdirectory(receiver)
 
 if (NOT FREERTOS_KERNEL_PATH AND NOT DEFINED ENV{FREERTOS_KERNEL_PATH})
     message("Skipping Pico W FreeRTOS examples as FREERTOS_KERNEL_PATH not defined")
