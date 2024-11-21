@@ -39,9 +39,9 @@ void init_hardware() {
     init_ultrasonic_sensor();
     sleep_ms(1000);
 
-    // printf("[6/7] INITIALIZING UDP CLIENT SOCKET\n");
-    // init_barcode_wifi();
-    // sleep_ms(1000);
+    printf("[6/7] INITIALIZING UDP CLIENT SOCKET\n");
+    init_barcode_wifi();
+    sleep_ms(1000);
 
     printf("[7/7] INITIALIZING UDP SERVER SOCKET\n");
     init_server_socket();

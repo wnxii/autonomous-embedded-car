@@ -5,7 +5,8 @@
 #include <lwip/sockets.h>
 #include <stdio.h>
 #include <string.h>
-#include "../../ir_sensor/barcode_scanner/barcode_scanner.h"  // Include the barcode scanner header
+#include "barcode_client_socket.h"
+#include "../../ir_sensor/barcode_scanner/barcode_scanner.h"
 
 // Wi-Fi and server configurations
 #define WIFI_SSID "liangfannn"
@@ -14,51 +15,40 @@
 #define SERVER_PORT 12345
 #define TEST_TASK_PRIORITY (tskIDLE_PRIORITY + 2UL)
 
+// Create queues for sensor data
+QueueHandle_t xWheelEncoderQueue;
+QueueHandle_t xUltrasonicQueue;
+
+// Connection status
 volatile bool connected = false;
 
-// Send message over socket
-static void send_message(int socket, const char *msg) {
+// Send message over UDP socket
+static void send_message_udp(int socket, const char *msg, struct sockaddr_in *server_addr) {
     int len = strlen(msg);
-    int sent = 0;
-    while (sent < len) {
-        int bytes = send(socket, msg + sent, len - sent, 0);
-        if (bytes <= 0) {
-            printf("Connection closed\n");
-            return;
-        }
-        sent += bytes;
+    int sent = sendto(socket, msg, len, 0, (struct sockaddr *)server_addr, sizeof(*server_addr));
+    if (sent < 0) {
+        printf("Failed to send message. Error: %d\n", errno);
+    } else {
+        printf("Sent %d bytes via UDP\n", sent);
     }
 }
 
-// Function to connect to the server
-static int connect_to_server() {
-    int sock = socket(AF_INET, SOCK_STREAM, IPPROTO_IP);
-    struct sockaddr_in server_addr = {
-        .sin_family = AF_INET,
-        .sin_port = htons(SERVER_PORT),
-    };
-    inet_aton(SERVER_IP, &server_addr.sin_addr);
-
+// Function to create UDP socket
+static int create_udp_socket() {
+    int sock = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
     if (sock < 0) {
-        printf("Unable to create socket: error %d\n", errno);
+        printf("Unable to create UDP socket: error %d\n", errno);
         return -1;
     }
-
-    printf("Connecting to server at %s:%d\n", SERVER_IP, SERVER_PORT);
-    if (connect(sock, (struct sockaddr *)&server_addr, sizeof(server_addr)) < 0) {
-        printf("Connection to server failed. Error: %d\n", errno);
-        closesocket(sock);
-        return -1;
-    }
-
-    printf("Connected to server!\n");
+    printf("UDP socket created\n");
     return sock;
 }
 
-// Client task to send barcode data to the server
+// Client task to receive and send all sensor data to the server
 void client_task(__unused void *params) {
     if (cyw43_arch_init()) {
         printf("WiFi init failed\n");
+        connected = false;
         return;
     }
 
@@ -67,41 +57,66 @@ void client_task(__unused void *params) {
 
     if (cyw43_arch_wifi_connect_timeout_ms(WIFI_SSID, WIFI_PASSWORD, CYW43_AUTH_WPA2_AES_PSK, 30000)) {
         printf("Failed to connect to WiFi\n");
+        connected = false;
         return;
     }
     printf("Connected to WiFi\n");
+    connected = true;
 
-    int sock = connect_to_server();
+    int sock = create_udp_socket();
     if (sock < 0) {
-        printf("Failed to connect to the server\n");
+        printf("Failed to create UDP socket\n");
+        connected = false;
         return;
     }
 
-    connected = true;
-
-    // Initialize barcode scanning tasks
-    // init_barcode();
+    // Set up server address
+    struct sockaddr_in server_addr = {
+        .sin_family = AF_INET,
+        .sin_port = htons(SERVER_PORT),
+    };
+    inet_aton(SERVER_IP, &server_addr.sin_addr);
 
     char message[200];
+    char wheel_message[100];
+    char ultrasonic_message[100];
+
     while (true) {
-        if (xQueueReceive(xServerQueue, &message, portMAX_DELAY)) {
-            send_message(sock, message);
-            printf("Sent: %s", message);
+        // Handle barcode data
+        if (xQueueReceive(xServerQueue, &message, 0)) {
+            snprintf(message, sizeof(message), "BARCODE:%s", message);
+            send_message_udp(sock, message, &server_addr);
+            printf("Sent barcode data: %s\n", message);
         }
+
+        // Handle wheel encoder data
+        if (xQueueReceive(xWheelEncoderQueue, &wheel_message, 0)) {
+            snprintf(message, sizeof(message), "WHEEL:%s", wheel_message);
+            send_message_udp(sock, message, &server_addr);
+            printf("Sent wheel encoder data: %s\n", message);
+        }
+
+        // Handle ultrasonic data
+        if (xQueueReceive(xUltrasonicQueue, &ultrasonic_message, 0)) {
+            snprintf(message, sizeof(message), "ULTRA:%s", ultrasonic_message);
+            send_message_udp(sock, message, &server_addr);
+            printf("Sent ultrasonic data: %s\n", message);
+        }
+
+        vTaskDelay(pdMS_TO_TICKS(10)); // Small delay to prevent tight loop
     }
 
+    connected = false;
     closesocket(sock);
     cyw43_arch_deinit();
 }
 
 void init_barcode_wifi() {
-    TaskHandle_t task_handle;
-    xTaskCreate(client_task, "client_task", 4096, NULL, TEST_TASK_PRIORITY, &task_handle);
-}
+    // Create queues
+    xWheelEncoderQueue = xQueueCreate(5, sizeof(char[100]));
+    xUltrasonicQueue = xQueueCreate(5, sizeof(char[100]));
 
-/* int main() {
-    stdio_init_all();
-    init_barcode_wifi();
-    vTaskStartScheduler();
-    return 0;
-}   */
+    // Create client task
+    TaskHandle_t client_handle;
+    xTaskCreate(client_task, "client_task", 4096, NULL, TEST_TASK_PRIORITY, &client_handle);
+}

@@ -1,9 +1,16 @@
-#ifndef barcode_scanner_with_client_socket_H
-#define barcode_scanner_with_H
+#ifndef BARCODE_CLIENT_SOCKET_H
+#define BARCODE_CLIENT_SOCKET_H
 
-void init_barcode_wifi();
+#include "FreeRTOS.h"
+#include "queue.h"
 
+// Queues for sensor data
+extern QueueHandle_t xWheelEncoderQueue;
+extern QueueHandle_t xUltrasonicQueue;
+
+// Connection status
 extern volatile bool connected;
 
+void init_barcode_wifi();
 
 #endif

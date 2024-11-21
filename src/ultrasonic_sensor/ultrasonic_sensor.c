@@ -6,6 +6,7 @@
 #include "queue.h"
 #include "semphr.h"
 #include "ultrasonic_sensor.h"
+#include "../wifi/barcode_client_socket/barcode_client_socket.h"
 #include <stdio.h>
 #include <math.h>
 
@@ -21,6 +22,7 @@ volatile MeasurementData current_measurement = {0, 0, false, false};
 void ultrasonic_task(void *params) {
     TickType_t last_wake_time = xTaskGetTickCount();
     float distance;
+    char message[100];
     
     while (1) {
         // Reset measurement state
@@ -84,10 +86,16 @@ void ultrasonic_task(void *params) {
         float prev_distance;
         while (xQueueReceive(distance_queue, &prev_distance, 0) == pdTRUE);  // Clear queue
 
-        xQueueSend(distance_queue, &distance, 0);
+        if (xQueueSend(distance_queue, &distance, 0) == pdTRUE) {
+            // Send to UDP client queue
+            bool obstacle = (distance > 0 && distance <= 30.0f); // 30cm safety threshold
+            snprintf(message, sizeof(message), "DIST=%.2f,OBS=%d", distance, obstacle);
+            xQueueSend(xUltrasonicQueue, &message, 0);
+            printf("Ultrasonic Distance: %.2f cm, Obstacle: %d\n", distance, obstacle);
+        }
         
         // Run every 100ms
-        vTaskDelayUntil(&last_wake_time, pdMS_TO_TICKS(100));
+        vTaskDelayUntil(&last_wake_time, pdMS_TO_TICKS(10));
     }
 }
 
@@ -105,8 +113,8 @@ void init_ultrasonic_sensor() {
     // Start with trigger pin low
     gpio_put(TRIGGER_PIN, 0);
     
-    gpio_set_irq_enabled(ECHO_PIN, GPIO_IRQ_EDGE_RISE | GPIO_IRQ_EDGE_FALL,
-                                     true);
+    gpio_set_irq_enabled(ECHO_PIN, GPIO_IRQ_EDGE_RISE | GPIO_IRQ_EDGE_FALL, true);
+
     // Create ultrasonic task
     xTaskCreate(ultrasonic_task, 
                "Ultrasonic Task", 

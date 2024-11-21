@@ -6,6 +6,7 @@
 #include "queue.h"
 #include "semphr.h"
 #include "wheel_encoder.h"
+#include "../wifi/barcode_client_socket/barcode_client_socket.h"
 #include <stdio.h> 
 
 // Global variables protected by mutex
@@ -26,6 +27,7 @@ static QueueHandle_t right_encoder_queue;
 void left_encoder_task(void *params) {
     EncoderData data, last_sent = {0, 0};
     TickType_t last_wake_time = xTaskGetTickCount();
+    char message[100];
 
     while (1) {
         if (xSemaphoreTake(left_data_mutex, portMAX_DELAY) == pdTRUE) {
@@ -36,14 +38,16 @@ void left_encoder_task(void *params) {
             if (data.pulse_count != last_sent.pulse_count) {
                 xQueueReset(left_encoder_queue);
                 if (xQueueSendToBack(left_encoder_queue, &data, 0) == pdTRUE) {
-                    // printf("Left encoder - Count: %lu, Timestamp: %llu\n", data.pulse_count, data.timestamp);
+                    // Send to UDP client queue
+                    float speed = get_left_speed();
+                    float distance = get_left_distance();
+                    snprintf(message, sizeof(message), "L_SPD=%.2f,L_DIST=%.2f", speed, distance);
+                    xQueueSend(xWheelEncoderQueue, &message, 0);
                     last_sent = data;
-                }  else {
-                    printf("Left encoder queue send failed\n");
                 }
             }
         }
-        vTaskDelayUntil(&last_wake_time, pdMS_TO_TICKS(10));  // Adjust frequency as needed
+        vTaskDelayUntil(&last_wake_time, pdMS_TO_TICKS(10));
     }
 }
 
@@ -51,6 +55,7 @@ void left_encoder_task(void *params) {
 void right_encoder_task(void *params) {
     EncoderData data, last_sent = {0, 0};
     TickType_t last_wake_time = xTaskGetTickCount();
+    char message[100];
     
     while (1) {
         if (xSemaphoreTake(right_data_mutex, portMAX_DELAY) == pdTRUE) {
@@ -61,14 +66,16 @@ void right_encoder_task(void *params) {
             if (data.pulse_count != last_sent.pulse_count) {
                 xQueueReset(right_encoder_queue);
                 if (xQueueSendToBack(right_encoder_queue, &data, 0) == pdTRUE) {
-                    // printf("Right encoder - Count: %lu, Timestamp: %llu\n", data.pulse_count, data.timestamp);
+                    // Send to UDP client queue
+                    float speed = get_right_speed();
+                    float distance = get_right_distance();
+                    snprintf(message, sizeof(message), "R_SPD=%.2f,R_DIST=%.2f", speed, distance);
+                    xQueueSend(xWheelEncoderQueue, &message, 0);
                     last_sent = data;
-                } else {
-                    printf("Right encoder queue send failed\n");
                 }
             }
         }
-        vTaskDelayUntil(&last_wake_time, pdMS_TO_TICKS(10)); // Adjust frequency as needed
+        vTaskDelayUntil(&last_wake_time, pdMS_TO_TICKS(100)); // Update every 100ms
     }
 }
 
