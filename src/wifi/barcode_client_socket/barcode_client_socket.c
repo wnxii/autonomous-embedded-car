@@ -154,10 +154,12 @@ void wifi_task(__unused void *params) {
     send_message_udp(dashboard_sock, "Connection From Pico Car", &dashboard_server_addr);
 
     char message[200];
+    char barcode_message[100];
     char wheel_message[100];
     char ultrasonic_message[100];
 
     while (true) {
+        printf("Waiting for data from Remote Control Client\n");
         // Handle Receive Controls from Remote Control Pico
         int recv_len = recvfrom(remote_sock, buffer, sizeof(buffer) - 1, 0, (struct sockaddr *)&remote_client_addr, &remote_client_addr_len);
         if (recv_len < 2) {
@@ -167,9 +169,11 @@ void wifi_task(__unused void *params) {
         buffer[recv_len] = '\0'; // Null-terminate the received string
         handle_received_controls(buffer);
 
+        printf("Sending Pico Car Data to Dashboard Server\n");
+
         // Handle barcode data
-        if (xQueueReceive(xServerQueue, &message, 0)) {
-            snprintf(message, sizeof(message), "BARCODE:%s", message);
+        if (xQueueReceive(xServerQueue, &barcode_message, 0)) {
+            snprintf(message, sizeof(message), "BARCODE:%s", barcode_message);
             send_message_udp(dashboard_sock, message, &dashboard_server_addr);
             printf("Sent barcode data: %s\n", message);
         }
@@ -196,7 +200,7 @@ void wifi_task(__unused void *params) {
     cyw43_arch_deinit();
 }
 
-void init_barcode_wifi() {
+void init_wifi() {
     // Create queues
     xWheelEncoderQueue = xQueueCreate(5, sizeof(char[100]));
     xUltrasonicQueue = xQueueCreate(5, sizeof(char[100]));

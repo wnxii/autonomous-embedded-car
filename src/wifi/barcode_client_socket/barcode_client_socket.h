@@ -13,6 +13,6 @@ extern int remote_steering;
 // Connection status
 extern volatile bool connected;
 
-void init_barcode_wifi();
+void init_wifi();
 
 #endif
