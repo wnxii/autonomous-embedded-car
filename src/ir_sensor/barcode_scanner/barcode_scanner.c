@@ -45,6 +45,12 @@ TaskHandle_t xBarcodeTaskHandle = NULL;
 TaskHandle_t xButtonTaskHandle = NULL;
 TaskHandle_t xDisplayTaskHandle = NULL;
 
+// Threshold variables
+static uint32_t min_barcode_threshold = 4095;
+static uint32_t max_barcode_threshold = 0;
+static uint32_t barcode_contrast_threshold = 2048;  // Initial threshold (mid-range)
+
+
 // Function to initialize the ADC for the IR sensor (analog contrast detection)
 void init_adc() {
     adc_init();
@@ -65,7 +71,21 @@ float get_barcode_moving_average_adc() {
     for (int i = 0; i < MOVING_AVG_WINDOW; i++) {
         sum += barcode_adc_buffer[i];
     }
-    return (sum / MOVING_AVG_WINDOW) * (3.3f / 4095);  // Convert to volts
+    return (uint16_t)(sum / MOVING_AVG_WINDOW);  // Convert to volts
+}
+
+void update_barcode_threshold(uint16_t adc_reading) {
+    // Update min and max thresholds
+    if (adc_reading < min_barcode_threshold) {
+        min_barcode_threshold = adc_reading;
+    }
+    if (adc_reading > max_barcode_threshold) {
+        max_barcode_threshold = adc_reading;
+    }
+
+    // Recalculate contrast threshold as the average of min and max
+    barcode_contrast_threshold = (min_barcode_threshold + max_barcode_threshold) / 2;
+    printf("Contrast Threshold: %u\n", barcode_contrast_threshold);
 }
 
 
@@ -105,7 +125,7 @@ void reset_barcode()
 // Function to parse scanned bars
 char parse_scanned_bars()
 {    
-    char displayMessage[50];
+    // char displayMessage[50];
     // Initialise array of indexes
     uint16_t indexes[CODE_LENGTH] = {0, 1, 2, 3, 4, 5, 6, 7, 8};
 
@@ -237,8 +257,11 @@ char parse_scanned_bars()
 // Read and process barcode using ADC
 void vBarcodeTask(void *pvParameters) {
     while(true) {
-        float current_ir_value = get_barcode_moving_average_adc(); // Get averaged ADC value in volts
-        bool current_state_black = current_ir_value >= CONTRAST_THRESHOLD;
+        /*  float current_ir_value = get_barcode_moving_average_adc(); // Get averaged ADC value in volts
+        bool current_state_black = current_ir_value >= CONTRAST_THRESHOLD; */
+        uint16_t current_ir_value = get_barcode_moving_average_adc(); // Get averaged ADC value
+        update_barcode_threshold(current_ir_value);
+        bool current_state_black = current_ir_value >= barcode_contrast_threshold;
 
         char message[200]; // Message buffer
 
@@ -256,6 +279,12 @@ void vBarcodeTask(void *pvParameters) {
         if (start_scan && first_black_detected && current_state_black != last_state_black) {
             uint64_t current_time = time_us_64();
             uint64_t time_diff = current_time - last_state_change_time;
+            
+            // Reset barcode if timing between bars does not make sense
+            if (time_diff > 2000000) {
+                reset_barcode();
+                continue;
+            }
             
             // Ignore gap only once after the first and second characters
             if ((count_scanned_char == 1 && !ignored_first_gap) || (count_scanned_char == 2 && !ignored_second_gap)) {

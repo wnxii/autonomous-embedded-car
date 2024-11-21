@@ -112,7 +112,7 @@ void car_movement_task(void *pvParameters) {
     MotorControl control;
     
     // Code for Remote Control
-    while (1)
+    while (true)
     {
         // Check for obstacle detection
         if (is_obstacle_detected(SAFETY_THRESHOLD)) {
@@ -153,7 +153,7 @@ void car_movement_task(void *pvParameters) {
             move_car(STOP, 0.0, 0.0, 0.0); // Stop the car immediately
             break;
         }
-    } */
+    }  */
 }
 
 // Main function
