@@ -208,10 +208,10 @@ void control_motor_on_line_task(void *pvParameters) {
 
     while (1) {
         if (get_black_line_detected()) {
-            // On black line - move forward
+            // Line is detected; enable autonomous running
             set_autonomous_running(true);
-            // stop_running = 0; // Reset the stop_running counter
-            search_attempts = 0; // Reset search attempts
+            search_attempts = 0;            // Reset search attempts
+            turn_angle = 5;                 // Reset angle to initial value
 
             // MOVE FORWARD to stay on the line
             move_car(FORWARD, forward_speed, forward_speed, 0);
@@ -221,21 +221,29 @@ void control_motor_on_line_task(void *pvParameters) {
                 // Line not detected while in autonomous mode
                 search_attempts++;
 
-                // Gradual search pattern
-                if (search_direction == 1) {
-                    // STEER LEFT to search for the line
-                    move_car(STEER_FORWARD_LEFT, base_turn_speed, max_turn_speed, 0.0);
-                } else {
-                    // STEER RIGHT to search for the line
-                    move_car(STEER_FORWARD_RIGHT, max_turn_speed, base_turn_speed-2, 0.0);
+                // Gradually increase the turn angle with each attempt
+                // turn_angle = search_attempts * turn_increment);
+                if (turn_angle > max_angle) {
+                    turn_angle = max_angle; // Cap the angle to the maximum value
                 }
 
+                if (!get_black_line_detected()) { // Continue turning only if black line is still not detected
+                    if (search_direction == 1) {
+                        // STEER LEFT with increasing angle
+                        move_car(PIVOT_LEFT, 0.0, 0.0, turn_angle);
+                        printf("Pivoting left. Angle: %d\n", turn_angle);
+                    } else {
+                        // STEER RIGHT with increasing angle
+                        move_car(PIVOT_RIGHT, 0.0, 0.0, turn_angle + 5);
+                        printf("Pivoting right. Angle: %d\n", turn_angle + 5);
+                    }
 
-               // Switch direction after `turn_time_ms`
-                if ((xTaskGetTickCount() - last_turn_time) >= pdMS_TO_TICKS(turn_time_ms)) {
-                    search_direction = -search_direction;
-                    last_turn_time = xTaskGetTickCount();
-                    printf("Switching search direction.\n");
+                    // Switch direction after `turn_time_ms`
+                    if ((xTaskGetTickCount() - last_turn_time) >= pdMS_TO_TICKS(turn_time_ms)) {
+                        search_direction = -search_direction;
+                        last_turn_time = xTaskGetTickCount();
+                        printf("Switching search direction.\n");
+                    }
                 }
 
                 // Check if the threshold is reached
@@ -252,7 +260,8 @@ void control_motor_on_line_task(void *pvParameters) {
 
         vTaskDelay(pdMS_TO_TICKS(5)); // Short delay for responsive line checking
     }
-} 
+} */
+
 
 /* void control_motor_on_line_task(void *pvParameters) {
     const int lost_line_threshold = 1000;  // Number of cycles without line detection before stopping
@@ -276,14 +285,22 @@ void control_motor_on_line_task(void *pvParameters) {
             printf("Both sensors detect white. Moving forward.\n");
             move_car(FORWARD, forward_speed, forward_speed, 0);
         } else {
-            move_car(STOP, 0.0, 0.0, 0.0);
+            // Neither condition satisfied, continue searching
+            printf("Searching for white on both sensors...\n");
+            search_attempts++;
+            move_car(STEER_FORWARD_LEFT, base_turn_speed, max_turn_speed, 0.0);
         }
 
-        vTaskDelay(pdMS_TO_TICKS(5));
+        // Check if the threshold is reached
+        if (search_attempts >= lost_line_threshold) {
+            printf("Line lost consistently. Stopping the car.\n");
+            move_car(STOP, 0.0, 0.0, 0.0);
+            break;  // Stop the loop
+        }
+
+        vTaskDelay(pdMS_TO_TICKS(5));  // Short delay for responsive sensor readings
     }
 } */
-
-
 
 // Function to initialize the ADC for Line Following
 void init_line_sensor() {
@@ -295,6 +312,6 @@ void init_line_sensor() {
     adc_gpio_init(LINE_SENSOR_PIN);
 
     xTaskCreate(vLineFollowingTask, "Line Following Task", configMINIMAL_STACK_SIZE * 4, NULL, tskIDLE_PRIORITY + 1, NULL);
-    // xTaskCreate(control_motor_on_line_task, "Control Motor on Line", configMINIMAL_STACK_SIZE * 4, NULL, tskIDLE_PRIORITY + 1, NULL);
+    xTaskCreate(control_motor_on_line_task, "Control Motor on Line", configMINIMAL_STACK_SIZE * 4, NULL, tskIDLE_PRIORITY + 1, NULL);
 }
 
