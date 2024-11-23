@@ -127,8 +127,8 @@ float get_right_distance() {
     if (xQueuePeek(right_encoder_queue, &data, 0) == pdTRUE) {
         float distance_per_pulse = WHEEL_CIRCUMFERENCE / PULSES_PER_REVOLUTION;
         distance = distance_per_pulse * (float)data.pulse_count;
-        // printf("Right Distance - Pulses: %lu, Distance Per Hole: %.2f, Distance: %.2f cm\n",
-               // data.pulse_count, distance_per_pulse, distance );
+        printf("Right Distance - Pulses: %lu, Distance Per Hole: %.2f, Distance: %.2f cm\n",
+               data.pulse_count, distance_per_pulse, distance );
     } 
     return distance;
 }

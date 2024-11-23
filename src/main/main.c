@@ -36,9 +36,17 @@ void init_hardware() {
     init_motor();
     sleep_ms(1000);
 
-    printf("[DEBUG] [5/7] INITIALIZING ULTRASONIC SENSOR\n");
+    // printf("[3/7] INITIALIZING BARCODE SCANNER\n");
+    // init_barcode();
+    // sleep_ms(1000);
+
+    // printf("[4/7] INITIALIZING LINE SENSOR\n");
+    // init_line_sensor();
+    // sleep_ms(1000);
+
+    printf("[5/7] INITIALIZING ULTRASONIC SENSOR\n");
     init_ultrasonic_sensor();
-    sleep_ms(1000);
+    sleep_ms(1000); */
 
     printf("[DEBUG] HARDWARE INITIALIZATION COMPLETE\n");
     
@@ -144,7 +152,7 @@ float get_average_distance() {
 // Task for car movement
 void car_movement_task(void *pvParameters) {
     // Initialize movement system
-    MotorControl control;
+/*     MotorControl control;
     
     // Code for Remote Control
 /*     while (true)
