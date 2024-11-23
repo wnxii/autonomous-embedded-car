@@ -8,6 +8,7 @@
 #include "ultrasonic_sensor.h"
 #include <stdio.h>
 #include <math.h>
+#include "../wifi/client_server_socket/client_server_socket.h"
 
 #define MAX_DISTANCE 400 // Maximum distance in cm
 #define TIMEOUT_US 23200 // Timeout in microseconds (based on MAX_DISTANCE)
@@ -18,9 +19,11 @@ static QueueHandle_t distance_queue;
 SemaphoreHandle_t measurement_mutex;
 volatile MeasurementData current_measurement = {0, 0, false, false};
 
+
 void ultrasonic_task(void *params) {
     TickType_t last_wake_time = xTaskGetTickCount();
     float distance;
+    char message[100];
     
     while (1) {
         // Reset measurement state
@@ -85,6 +88,9 @@ void ultrasonic_task(void *params) {
         while (xQueueReceive(distance_queue, &prev_distance, 0) == pdTRUE);  // Clear queue
 
         xQueueSend(distance_queue, &distance, 0);
+
+        snprintf(message, sizeof(message), "ULTRA: Distance to object = %.2f", distance);
+        xQueueSend(xServerQueue, &message, portMAX_DELAY);
         
         // Run every 100ms
         vTaskDelayUntil(&last_wake_time, pdMS_TO_TICKS(100));
@@ -125,7 +131,12 @@ float measure_distance() {
 }
 
 bool is_obstacle_detected(float safety_threshold) {
+    char message[100];
     float distance = measure_distance();
-    printf("Ultrasonic Distance: %f \n", distance);
-    return (distance > 0 && distance <= safety_threshold);
+    bool obstacle_detected = distance > 0 && distance <= safety_threshold;
+    if (obstacle_detected) {
+        snprintf(message, sizeof(message), "ULTRA: Obstacle detected %.2f away.", distance);
+        xQueueSend(xServerQueue, &message, portMAX_DELAY);
+    }
+    return (obstacle_detected);
 }

@@ -120,8 +120,6 @@ float get_angle_turned_pivot() {
 void pivot_turn_control_task(void *pvParameters) {
     float target_angle = *(float *)pvParameters;
     MovementDirection direction = current_movement;
-    reset_left_encoder();
-    reset_right_encoder();
     
     // Turn until the angle is reached (+-5.0) 
     float current_angle = 0.0f;
@@ -138,8 +136,8 @@ void pivot_turn_control_task(void *pvParameters) {
             gpio_put(right_motor.dir_pin1, 1);
             gpio_put(right_motor.dir_pin2, 0);
             
-            set_motor_pwm(left_motor.pwm_pin, MAX_DUTY_CYCLE-0.4, 1000.0f);
-            set_motor_pwm(right_motor.pwm_pin, MAX_DUTY_CYCLE-0.4, 1000.0f);
+            set_motor_pwm(left_motor.pwm_pin, MAX_DUTY_CYCLE-0.2, 1000.0f);
+            set_motor_pwm(right_motor.pwm_pin, MAX_DUTY_CYCLE-0.2, 1000.0f);
                 
         } else if (direction == PIVOT_LEFT) {
             // Apply forward and reverse direction to left and right motor respectively for left turn
@@ -148,8 +146,8 @@ void pivot_turn_control_task(void *pvParameters) {
             gpio_put(right_motor.dir_pin1, 0);
             gpio_put(right_motor.dir_pin2, 1);
 
-            set_motor_pwm(left_motor.pwm_pin, MAX_DUTY_CYCLE-0.3, 1000.0f); 
-            set_motor_pwm(right_motor.pwm_pin, MAX_DUTY_CYCLE-0.3, 1000.0f); 
+            set_motor_pwm(left_motor.pwm_pin, MAX_DUTY_CYCLE-0.2, 1000.0f); 
+            set_motor_pwm(right_motor.pwm_pin, MAX_DUTY_CYCLE-0.2, 1000.0f); 
         }
 
         // Update current angle based on encoder data
@@ -176,6 +174,8 @@ void control_motor_pivot_turn(float target_angle) {
             return;
         }
         *angle_param = target_angle;
+        reset_left_encoder();
+        reset_right_encoder();
          // Start the turn control task with the angle and direction as parameters
         if (xTaskCreate(pivot_turn_control_task, "Pivot Turn Control", configMINIMAL_STACK_SIZE, (void *)angle_param, tskIDLE_PRIORITY + 1, NULL) != pdPASS) {
             printf("Failed to create Pivot Turn Control task\n");
@@ -253,7 +253,7 @@ void stop_motor() {
 // Unified movement function
 void move_car(MovementDirection direction, float left_target_speed, float right_target_speed, float angle) {
     current_movement = direction; // Update current direction
-    printf("Moving car - Direction: %d, Left Target Speed: %.2f, Right Target Speed: %.2f\n", direction, left_target_speed, right_target_speed);
+    // printf("Moving car - Direction: %d, Left Target Speed: %.2f, Right Target Speed: %.2f\n", direction, left_target_speed, right_target_speed);
     switch(direction) {
         case FORWARD:
             control_motor_direction(&left_motor, true, left_target_speed);

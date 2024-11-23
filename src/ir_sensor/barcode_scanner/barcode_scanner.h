@@ -34,7 +34,7 @@ float get_barcode_moving_average_adc();
 // extern volatile bool scanning_allowed; // Boolean to indicate when scanning is allowed
 // extern bool start_scan;                // Boolean to indicate barcode is scanning
 // External queue declaration for server-bound messages
-extern QueueHandle_t xServerQueue;
+// extern QueueHandle_t xServerQueue;
 extern volatile bool error_scanning;
 extern volatile bool scan_started;
 

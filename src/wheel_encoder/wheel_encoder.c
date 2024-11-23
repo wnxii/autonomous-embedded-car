@@ -7,6 +7,7 @@
 #include "semphr.h"
 #include "wheel_encoder.h"
 #include <stdio.h> 
+#include "../wifi/client_server_socket/client_server_socket.h"
 
 // Global variables protected by mutex
 volatile EncoderData left_data = {0, 0};
@@ -136,6 +137,7 @@ float get_right_distance() {
 float get_left_speed() {
     EncoderData current;
     float speed = 0.0f;
+    char message[100];
 
     if (xQueuePeek(left_encoder_queue, &current, 0) == pdTRUE) {
         if (current.pulse_count != left_last_data.pulse_count) {  // Only calculate if count changed
@@ -145,8 +147,9 @@ float get_left_speed() {
             if (time_diff > 0) {
                 float distance_per_pulse = WHEEL_CIRCUMFERENCE / PULSES_PER_REVOLUTION;
                 speed = (distance_per_pulse * count_diff) / time_diff;  // Speed in cm/s
-                // printf("Left Speed: %.2f cm/s (count diff: %.1f, time diff: %.6f s)\n", 
-                        // speed, count_diff, time_diff);
+                snprintf(message, sizeof(message), "WHEEL: Left Speed: %.2f cm/s (count diff: %.1f, time diff: %.6f s)\n", 
+                        speed, count_diff, time_diff);
+                xQueueSend(xServerQueue, &message, portMAX_DELAY); // Send message to display task
             }
 
             left_last_data = current;
@@ -165,6 +168,7 @@ float get_left_speed() {
 float get_right_speed() {
     EncoderData current;
     float speed = 0.0f;
+    char message[100];
 
     if (xQueuePeek(right_encoder_queue, &current, 0) == pdTRUE) {
         if (current.pulse_count != right_last_data.pulse_count) {  // Only calculate if count changed
@@ -174,8 +178,9 @@ float get_right_speed() {
             if (time_diff > 0) {
                 float distance_per_pulse = WHEEL_CIRCUMFERENCE / PULSES_PER_REVOLUTION;
                 speed = (distance_per_pulse * count_diff) / time_diff;  // Speed in cm/s
-                // printf("Right Speed: %.2f cm/s (count diff: %.1f, time diff: %.6f s)\n", 
-                        //speed, count_diff, time_diff);
+                snprintf(message, sizeof(message), "WHEEL: Right Speed: %.2f cm/s (count diff: %.1f, time diff: %.6f s)\n", 
+                        speed, count_diff, time_diff);
+                xQueueSend(xServerQueue, &message, portMAX_DELAY); // Send message to display task
             } 
 
             right_last_data = current;

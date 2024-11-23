@@ -18,9 +18,9 @@
 #define DIR_PIN4 9     // Direction pin 2 for Right Motor (L298N IN4)
 
 // PID Constants (Tuned at home)
-/* #define KP 0.005f
-#define KI 0.0030f 
-#define KD 0.0040f */
+/* #define KP 0.001f
+#define KI 0.000f 
+#define KD 0.000f */
 
 // PID Constants (Tuned in school - can be refine further)
 /* #define KP 0.009f 
@@ -31,6 +31,10 @@
 #define KP 0.01f 
 #define KI 0.003f 
 #define KD 0.005f
+
+/* #define KP 0.09f 
+#define KI 0.03f 
+#define KD 0.08f */
 
 #define M_PI 3.14159265358979323846
 

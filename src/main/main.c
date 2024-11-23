@@ -10,8 +10,7 @@
 #include "../motor/motor.h"
 #include "../ir_sensor/barcode_scanner/barcode_scanner.h"
 #include "../ir_sensor/line_following/line_following.h"
-#include "../wifi/barcode_client_socket/barcode_client_socket.h"
-#include "../wifi/server_socket/server_socket.h"
+#include "../wifi/client_server_socket/client_server_socket.h"
 #include "../ultrasonic_sensor/ultrasonic_sensor.h"
 #include "main.h"
 
@@ -19,35 +18,71 @@ bool obstacle_detected = false; // Flag to track if an obstacle is detected
 
 // Init all sensors required for station 2
 void init_hardware() {
-    printf("[1/7] INITIALIZING WHEEL ENCODERS\n");
+    // char message[100]; // Message buffer
+
+    printf("[DEBUG] [1/7] INITIALIZING SENSOR QUEUES\n");
+    init_sensor_queues();
+    sleep_ms(1000);
+
+    printf("[DEBUG] [2/7] INITIALIZING UDP DASHBOARD AND REMOTE SOCKET\n");
+    init_wifi();
+    sleep_ms(1000);
+
+    printf("[DEBUG] [3/7] INITIALIZING WHEEL ENCODERS\n");
     init_wheel_encoders();
     sleep_ms(1000);
 
-    printf("[2/7] INITIALIZING MOTOR\n");
+    printf("[DEBUG] [4/7] INITIALIZING MOTOR\n");
     init_motor();
     sleep_ms(1000);
 
-    // printf("[3/7] INITIALIZING BARCODE SCANNER\n");
-    // init_barcode();
-    // sleep_ms(1000);
-
-    // printf("[4/7] INITIALIZING LINE SENSOR\n");
-    // init_line_sensor();
-    // sleep_ms(1000);
-
-    printf("[5/7] INITIALIZING ULTRASONIC SENSOR\n");
+    printf("[DEBUG] [5/7] INITIALIZING ULTRASONIC SENSOR\n");
     init_ultrasonic_sensor();
     sleep_ms(1000);
 
-    // printf("[6/7] INITIALIZING UDP CLIENT SOCKET\n");
-    // init_barcode_wifi();
-    // sleep_ms(1000);
+    printf("[DEBUG] HARDWARE INITIALIZATION COMPLETE\n");
+    
 
-    printf("[7/7] INITIALIZING UDP SERVER SOCKET\n");
-    init_server_socket();
+/*     snprintf(message, sizeof(message), "[DEBUG] [1/7] INITIALIZING SENSOR QUEUES\n");
+    xQueueSend(xServerQueue, &message, portMAX_DELAY);
     sleep_ms(1000);
 
-    printf("HARDWARE INITIALIZATION COMPLETE\n");
+    snprintf(message, sizeof(message), "[DEBUG] [2/7] INITIALIZING UDP DASHBOARD AND REMOTE SOCKET\n");
+    xQueueSend(xServerQueue, &message, portMAX_DELAY);
+    sleep_ms(1000);   */
+
+
+    /* snprintf(message, sizeof(message), "[DEBUG] [3/7] INITIALIZING WHEEL ENCODERS\n");
+    xQueueSend(xServerQueue, &message, portMAX_DELAY);
+    init_wheel_encoders();
+    sleep_ms(1000);
+
+    snprintf(message, sizeof(message), "[DEBUG] [4/7] INITIALIZING MOTOR\n");
+    xQueueSend(xServerQueue, &message, portMAX_DELAY);
+    init_motor();
+    sleep_ms(1000); */
+
+/*     snprintf(message, sizeof(message), "[DEBUG] [5/7] INITIALIZING BARCODE SCANNER\n");
+    xQueueSend(xServerQueue, &message, portMAX_DELAY);
+    init_barcode();
+    sleep_ms(1000);
+
+    snprintf(message, sizeof(message), "[DEBUG] [6/7] INITIALIZING LINE SENSOR\n");
+    xQueueSend(xServerQueue, &message, portMAX_DELAY);
+    init_line_sensor();
+    sleep_ms(1000); */
+
+    /* snprintf(message, sizeof(message), "[DEBUG] [7/7] INITIALIZING ULTRASONIC SENSOR\n");
+    xQueueSend(xServerQueue, &message, portMAX_DELAY);
+    init_ultrasonic_sensor();
+    sleep_ms(1000);
+
+
+
+    snprintf(message, sizeof(message), "[DEBUG] HARDWARE INITIALIZATION COMPLETE\n");
+    xQueueSend(xServerQueue, &message, portMAX_DELAY); */
+
+
 }
 
 // Callback function for encoder pins
@@ -112,7 +147,7 @@ void car_movement_task(void *pvParameters) {
     MotorControl control;
     
     // Code for Remote Control
-    while (true)
+/*     while (true)
     {
         // Check for obstacle detection
         if (is_obstacle_detected(SAFETY_THRESHOLD)) {
@@ -142,18 +177,13 @@ void car_movement_task(void *pvParameters) {
         }
 
         vTaskDelay(50);
-    } 
+    }  */
 
     // Code for Autonomous Line Following and Barcode Scanning
     
-/*     while(1) {
+    while(1) {
         move_car(FORWARD, 35.0, 35.0, 0.0);
-        if (is_obstacle_detected(SAFETY_THRESHOLD)) {
-            obstacle_detected = true;
-            move_car(STOP, 0.0, 0.0, 0.0); // Stop the car immediately
-            break;
-        }
-    }  */
+    }
 }
 
 // Main function

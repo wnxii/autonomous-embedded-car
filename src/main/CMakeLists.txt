@@ -4,11 +4,10 @@ add_executable(main
     ../wheel_encoder/wheel_encoder.c  # Add wheel_encoder.c to the motor project
     #../ultrasonic_sensor/ultrasonic_sensor.c # Add ultrasonic_sensor.c to the motor project
     ../motor/motor.c
-    ../wifi/barcode_client_socket/barcode_client_socket.c
     ../ir_sensor/barcode_scanner/barcode_scanner.c
     ../ir_sensor/line_following/line_following.c
     ../ultrasonic_sensor/ultrasonic_sensor.c
-    ../wifi/server_socket/server_socket.c
+    ../wifi/client_server_socket/client_server_socket.c
 )
 
 target_compile_definitions(main PRIVATE

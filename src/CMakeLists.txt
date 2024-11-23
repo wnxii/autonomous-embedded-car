@@ -37,7 +37,7 @@ if (NOT FREERTOS_KERNEL_PATH AND NOT DEFINED ENV{FREERTOS_KERNEL_PATH})
 else()
     include(FreeRTOS_Kernel_import.cmake)
     add_subdirectory(main)
-    
+    add_subdirectory(receiver)
     add_subdirectory(main_station_1)
     add_subdirectory(main_station_2)
     add_subdirectory(main_station_3)
