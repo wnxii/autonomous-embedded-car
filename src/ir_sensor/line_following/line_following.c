@@ -26,7 +26,7 @@ bool white_detected = false;
 // Threshold variables
 // static uint32_t min_line_threshold = 4095;
 // static uint32_t max_line_threshold = 0;
-static uint32_t line_contrast_threshold = 1800;  // Initial threshold (mid-range)
+static uint32_t line_contrast_threshold = 1400;  // Initial threshold (mid-range)
 
 
 // Moving average for ADC readings
@@ -313,11 +313,11 @@ void set_autonomous_running(bool running) {
 } */
 
 
-void control_motor_on_line_task(void *pvParameters) {
+/* void control_motor_on_line_task(void *pvParameters) {
     const int lost_line_threshold = 10000;  // Number of cycles without line detection before stopping
     const float forward_speed = 25.0f;      // Speed for forward motion
     const float pivot_speed = 0.0f;        // Speed for pivot motion
-    const int pivot_duration_ms = 150;      // Duration for each pivot turn in milliseconds
+    // const int pivot_duration_ms = 150;      // Duration for each pivot turn in milliseconds
     int search_attempts = 0;                // Counter for search attempts
     bool searching_right = true;            // Keep track of the current pivot direction
 
@@ -338,11 +338,13 @@ void control_motor_on_line_task(void *pvParameters) {
             // Line not detected, perform pivot search
             if (search_attempts < lost_line_threshold) {
                 if (searching_right) {
-                    printf("Searching: Pivot right for %d ms.\n", pivot_duration_ms);
-                    move_car(PIVOT_RIGHT, pivot_speed, pivot_speed, 20);
+                    printf("Searching: Pivot right for %d ms.\n", 50);
+                    move_car(STOP, 0.0, 0.0, 0.0);
+                    move_car(PIVOT_RIGHT, pivot_speed, pivot_speed, 50);
                 } else {
-                    printf("Searching: Pivot left for %d ms.\n", pivot_duration_ms);
-                    move_car(PIVOT_LEFT, pivot_speed, pivot_speed, 20);
+                    printf("Searching: Pivot left for %d ms.\n", 50);
+                    move_car(STOP, 0.0, 0.0, 0.0);
+                    move_car(PIVOT_LEFT, pivot_speed, pivot_speed, 50);
                 }
 
                 // Alternate search direction
@@ -360,7 +362,134 @@ void control_motor_on_line_task(void *pvParameters) {
 
         // vTaskDelay(pdMS_TO_TICKS(10));  // Short delay for responsive sensor readings
     }
+} */
+
+/* void control_motor_on_line_task(void *pvParameters) {
+    const int lost_line_threshold = 10000;   // Total cycles before stopping the car
+    const int direction_cycle_limit = 5;  // Number of cycles in one direction before switching
+    const float forward_speed = 25.0f;      // Speed for forward motion
+    const float pivot_speed = 15.0f;        // Speed for pivot motion
+    const int pivot_duration_ms = 15;       // Duration for each pivot turn in milliseconds
+    int search_attempts = 0;                // Total search attempts
+    int direction_cycles = 0;               // Cycles in the current direction
+    bool searching_right = true;            // Current search direction
+
+    while (1) {
+        uint16_t current_ir_value = get_line_moving_average_adc(); // Get averaged ADC value
+        black_line_detected = current_ir_value >= line_contrast_threshold;
+
+        printf("[DEBUG] Line Following - Black Line Detected: %d \n", black_line_detected);
+
+        if (black_line_detected) {
+            // Line detected: reset search state and move forward
+            printf("Black line detected. Moving forward.\n");
+            move_car(FORWARD, forward_speed, forward_speed, 0.0f);
+            search_attempts = 0;           // Reset search attempts
+            direction_cycles = 0;          // Reset direction cycle count
+            searching_right = true;        // Reset to default search direction
+        } else {
+            // Line not detected: perform pivot search
+            if (search_attempts < lost_line_threshold) {
+                if (direction_cycles < direction_cycle_limit) {
+                    printf("Searching: Pivot %s for %d ms.\n",
+                           searching_right ? "right" : "left", pivot_duration_ms);
+
+                    move_car(STOP, 0.0, 0.0, 0.0);  // Stop before pivoting
+                    if (searching_right) {
+                        move_car(PIVOT_RIGHT, pivot_speed, pivot_speed, pivot_duration_ms);
+                    } else {
+                        move_car(PIVOT_LEFT, pivot_speed, pivot_speed, pivot_duration_ms);
+                    }
+
+                    direction_cycles++;  // Increment cycles in the current direction
+                } else {
+                    // Switch direction after reaching cycle limit
+                    printf("Switching direction to %s.\n", searching_right ? "left" : "right");
+                    searching_right = !searching_right;
+                    direction_cycles = 0;  // Reset direction cycle count
+                }
+
+                // Increment search attempts
+                search_attempts++;
+            } else {
+                // Line consistently lost: stop the car
+                printf("Line lost consistently. Stopping the car.\n");
+                move_car(STOP, 0.0f, 0.0f, 0.0f);
+                break;  // Exit the loop
+            }
+        }
+
+        // Small delay for responsive sensor readings
+        vTaskDelay(pdMS_TO_TICKS(10));
+    }
+} */
+
+void control_motor_on_line_task(void *pvParameters) {
+    const int lost_line_threshold = 200;       // Total cycles before stopping the car
+    const int right_scan_cycles = 5;          // Number of cycles to scan to the right
+    const int left_scan_cycles = right_scan_cycles * 2; // Double the cycles for left scan
+    const float forward_speed = 25.0f;        // Speed for forward motion
+    const float pivot_speed = 0.0f;           // Speed for pivot motion
+    const int pivot_duration_ms = 20;         // Duration for each pivot turn in milliseconds
+    int search_attempts = 0;                  // Total search attempts
+    int right_cycles_remaining = right_scan_cycles; // Remaining cycles to scan right
+    int left_cycles_remaining = left_scan_cycles;   // Remaining cycles to scan left
+    bool scanning_right = true;               // Flag to prioritize right scanning first
+
+    while (1) {
+        uint16_t current_ir_value = get_line_moving_average_adc(); // Get averaged ADC value
+        black_line_detected = current_ir_value >= line_contrast_threshold;
+
+        printf("[DEBUG] Line Following - Black Line Detected: %d \n", black_line_detected);
+
+        if (black_line_detected) {
+            // Line detected: reset search state and move forward
+            printf("Black line detected. Moving forward.\n");
+            move_car(FORWARD, forward_speed, forward_speed, 0.0f);
+            search_attempts = 0;             // Reset search attempts
+            right_cycles_remaining = right_scan_cycles; // Reset right scan cycles
+            left_cycles_remaining = left_scan_cycles;   // Reset left scan cycles
+            scanning_right = true;          // Start with right scan again
+        } else {
+            // Line not detected: perform pivot search
+            if (search_attempts < lost_line_threshold) {
+                if (scanning_right && right_cycles_remaining > 0) {
+                    // Perform a right scan
+                    printf("Searching: Pivot right for %d ms. Remaining right cycles: %d\n", pivot_duration_ms, right_cycles_remaining);
+                    move_car(PIVOT_RIGHT, pivot_speed, pivot_speed, pivot_duration_ms);
+                    right_cycles_remaining--;  // Decrement right scan cycles
+
+                    if (right_cycles_remaining == 0) {
+                        scanning_right = false; // Switch to left after right cycles are exhausted
+                    }
+                } else if (!scanning_right && left_cycles_remaining > 0) {
+                    // Perform a left scan
+                    printf("Searching: Pivot left for %d ms. Remaining left cycles: %d\n", pivot_duration_ms, left_cycles_remaining);
+                    move_car(PIVOT_LEFT, pivot_speed, pivot_speed, pivot_duration_ms);
+                    left_cycles_remaining--;  // Decrement left scan cycles
+                } else {
+                    // Reset right and left scan cycles if both are exhausted
+                    right_cycles_remaining = right_scan_cycles;
+                    left_cycles_remaining = left_scan_cycles;
+                    scanning_right = true; // Restart with right scanning
+                }
+
+                // Increment search attempts
+                search_attempts++;
+            } else {
+                // Line consistently lost: stop the car
+                printf("Line lost consistently. Stopping the car.\n");
+                move_car(STOP, 0.0f, 0.0f, 0.0f);
+                break;  // Exit the loop
+            }
+        }
+
+        // Small delay for responsive sensor readings
+        vTaskDelay(pdMS_TO_TICKS(10));
+    }
 }
+
+
 
 
 // Function to initialize the ADC for Line Following

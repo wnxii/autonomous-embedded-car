@@ -163,7 +163,7 @@ float get_angle_turned_pivot() {
 } */
 
 // Task to control the motor during turning based on duration
-void pivot_turn_control_task(void *pvParameters) {
+/* void pivot_turn_control_task(void *pvParameters) {
     // Extract the duration from the parameters
     float target_duration_ms = *(float *)pvParameters;
     MovementDirection direction = current_movement;
@@ -206,7 +206,7 @@ void pivot_turn_control_task(void *pvParameters) {
     pivot_turning_active = false;
     vPortFree(pvParameters); // Free allocated memory for the duration
     vTaskDelete(NULL);       // Delete this task
-}
+} */
 
 
 // Control motor turning Left or Right
@@ -233,7 +233,7 @@ void pivot_turn_control_task(void *pvParameters) {
 } */
 
 // Function to control pivot turning based on duration
-void control_motor_pivot_turn(float duration_ms) {
+/* void control_motor_pivot_turn(float duration_ms) {
     if (!pivot_turning_active) {
         // Set pivot_turning_active to true to indicate task is running
         pivot_turning_active = true;
@@ -247,14 +247,53 @@ void control_motor_pivot_turn(float duration_ms) {
         *duration_param = duration_ms;
 
         // Start the pivot turn control task with the duration as parameter
-        if (xTaskCreate(pivot_turn_control_task, "Pivot Turn Control", configMINIMAL_STACK_SIZE, 
+        if (xTaskCreate(pivot_turn_control_task, "Pivot Turn Control", configMINIMAL_STACK_SIZE * 4, 
                         (void *)duration_param, tskIDLE_PRIORITY + 1, NULL) != pdPASS) {
             printf("Failed to create Pivot Turn Control task\n");
             vPortFree(duration_param);
             pivot_turning_active = false;
         }
     }
-}
+} */
+
+void control_motor_pivot_turn(float duration_ms) {
+    // Ensure direction is valid
+
+    printf("Starting pivot turn: %s for %.2f ms\n", 
+           (current_movement == PIVOT_RIGHT) ? "Right" : "Left", duration_ms);
+
+    // Set motor directions based on the desired pivot direction
+    if (current_movement == PIVOT_RIGHT) {
+        // Right turn: left motor forward, right motor reverse
+        gpio_put(left_motor.dir_pin1, 0);
+        gpio_put(left_motor.dir_pin2, 1);
+        gpio_put(right_motor.dir_pin1, 1);
+        gpio_put(right_motor.dir_pin2, 0);
+    } else if (current_movement == PIVOT_LEFT) {
+        // Left turn: left motor reverse, right motor forward
+        gpio_put(left_motor.dir_pin1, 1);
+        gpio_put(left_motor.dir_pin2, 0);
+        gpio_put(right_motor.dir_pin1, 0);
+        gpio_put(right_motor.dir_pin2, 1);
+    }
+
+    // Set PWM for motors
+    set_motor_pwm(left_motor.pwm_pin, MAX_DUTY_CYCLE - 0.2, 256.0f);
+    set_motor_pwm(right_motor.pwm_pin, MAX_DUTY_CYCLE - 0.2, 256.0f);
+
+    // Wait for the specified duration
+    busy_wait_ms((int)duration_ms);
+
+    // Stop motors after the duration
+    gpio_put(left_motor.dir_pin1, 0);
+    gpio_put(left_motor.dir_pin2, 0);
+    gpio_put(right_motor.dir_pin1, 0);
+    gpio_put(right_motor.dir_pin2, 0);
+
+    printf("Pivot turn completed: %s\n", 
+           (current_movement == PIVOT_RIGHT) ? "Right" : "Left");
+} 
+
 
 // Function to map remote controller output to forward / backwards direction and target speed
 MotorControl map_remote_output_to_direction(int remote_output_direction, int remote_output_steering) {

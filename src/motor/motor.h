@@ -57,7 +57,7 @@ typedef enum {
     STEER_FORWARD_LEFT,
     STEER_FORWARD_RIGHT,
     STEER_BACKWARD_LEFT,
-    STEER_BACKWARD_RIGHT,
+    STEER_BACKWARD_RIGHT
 } MovementDirection;
 
 // Motor control structure
