@@ -435,7 +435,7 @@ void control_motor_on_line_task(void *pvParameters) {
     int right_cycles_remaining = right_scan_cycles; // Remaining cycles to scan right
     int left_cycles_remaining = left_scan_cycles;   // Remaining cycles to scan left
     bool scanning_right = true;               // Flag to prioritize right scanning first
-    const int black_line_threshold = 100;    // Threshold for black line detection
+    const int black_line_threshold = 50;    // Threshold for black line detection
     int black_line_count = 0;                 // Counter for black line detection
     bool is_previous_black_line = false;      // Flag to track previous black line status
     int compensate_duration = 0; // duration for compensating after kill switch, +ve left, -ve right
@@ -538,6 +538,6 @@ void init_line_sensor() {
     adc_gpio_init(LINE_SENSOR_PIN);
 
     // xTaskCreate(vLineFollowingTask, "Line Following Task", configMINIMAL_STACK_SIZE * 4, NULL, tskIDLE_PRIORITY + 3, NULL);
-    xTaskCreate(control_motor_on_line_task, "Control Motor on Line", configMINIMAL_STACK_SIZE * 4, NULL, tskIDLE_PRIORITY + 3, NULL);
+    xTaskCreate(control_motor_on_line_task, "Control Motor on Line", configMINIMAL_STACK_SIZE * 4, NULL, tskIDLE_PRIORITY + 4, NULL);
 }
 

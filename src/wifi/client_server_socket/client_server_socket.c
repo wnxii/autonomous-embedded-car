@@ -16,9 +16,9 @@
 #define WIFI_PASSWORD "saypleasethankyou"
 #define SERVER_IP "172.20.10.5"
 #define SERVER_PORT 12340
-#define TEST_TASK_PRIORITY (tskIDLE_PRIORITY + 2UL)
+#define TEST_TASK_PRIORITY (tskIDLE_PRIORITY + 4)
 
-#define NUM_OF_TASKS 7  // Adjust based on the actual number of tasks waiting
+#define NUM_OF_TASKS 8  // Adjust based on the actual number of tasks waiting
 
 // Global queue for all sensor data
 QueueHandle_t xServerQueue = NULL;
@@ -202,6 +202,7 @@ void wifi_task(__unused void *params) {
             send_message_udp(dashboard_sock, message, &dashboard_server_addr);
         }
 
+        taskYIELD();
         // Wait for next period
         vTaskDelayUntil(&last_wake_time, sensor_check_period);
     }

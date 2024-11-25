@@ -26,7 +26,7 @@
 // WiFi and UDP configuration
 #define WIFI_SSID "liangfannn"
 #define WIFI_PASSWORD "saypleasethankyou"
-#define SERVER_IP "172.20.10.3"
+#define SERVER_IP "172.20.10.6"
 #define UDP_PORT 12345
 #define MSG_MAX_LEN 10
 

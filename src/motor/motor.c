@@ -436,7 +436,7 @@ void pid_update_task(void *pvParameters) {
                 }
             } 
         } 
-            
+        taskYIELD();  
         vTaskDelay(pdMS_TO_TICKS(50)); // Adjust delay as needed for responsiveness
     }
 }
@@ -458,7 +458,7 @@ void init_motor() {
     pid_mutex = xSemaphoreCreateMutex();
 
     // Create PID update task for maintaining speed alignment between wheels
-    xTaskCreate(pid_update_task, "PID Update", configMINIMAL_STACK_SIZE, NULL, tskIDLE_PRIORITY+1, NULL);
+    xTaskCreate(pid_update_task, "PID Update", configMINIMAL_STACK_SIZE, NULL, tskIDLE_PRIORITY+4, NULL);
     // xTaskCreate(control_motor_on_line_task, "Control Motor on Line", configMINIMAL_STACK_SIZE, NULL, tskIDLE_PRIORITY + 1, NULL);
 }
 

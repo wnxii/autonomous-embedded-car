@@ -256,7 +256,7 @@ char parse_scanned_bars()
 // Read and process barcode using ADC
 void vBarcodeTask(void *pvParameters) {
     xSemaphoreTake(wifiConnectedSemaphore, portMAX_DELAY);
-    // char message[200]; // Message buffer
+    char message[200]; // Message buffer
     // bool current_state_black = false;
     while(true) {
         /*  float current_ir_value = get_barcode_moving_average_adc(); // Get averaged ADC value in volts
@@ -271,7 +271,7 @@ void vBarcodeTask(void *pvParameters) {
             last_state_black = true;
             start_scan = true;
             scan_started = true;
-            printf("BARCODE:First black bar detected, starting barcode scan\n");
+            // printf("BARCODE:First black bar detected, starting barcode scan\n");
             // snprintf(message, sizeof(message), "BARCODE:First black bar detected, starting barcode scan\n");
             // xQueueSend(xServerQueue, &message, portMAX_DELAY); // Send message to display task
             continue;
@@ -283,7 +283,7 @@ void vBarcodeTask(void *pvParameters) {
             
             // Reset barcode if timing between bars does not make sense
             if (time_diff > 3000000) {
-                printf("BARCODE:Bar timing too long, resetting scan\n");
+                // printf("BARCODE:Bar timing too long, resetting scan\n");
                 // snprintf(message, sizeof(message), "BARCODE:Bar timing too long, resetting scan\n");
                 // xQueueSend(xServerQueue, &message, portMAX_DELAY); // Send message to display task
                 reset_barcode();
@@ -292,7 +292,7 @@ void vBarcodeTask(void *pvParameters) {
             
             // Ignore gap only once after the first and second characters
             if ((count_scanned_char == 1 && !ignored_first_gap) || (count_scanned_char == 2 && !ignored_second_gap)) {
-                printf("BARCODE: Ignoring inter-character gap of %llu microseconds.\n", time_diff);
+                // printf("BARCODE: Ignoring inter-character gap of %llu microseconds.\n", time_diff);
                 // snprintf(message, sizeof(message), "BARCODE: Ignoring inter-character gap of %llu microseconds.\n", time_diff);
                 // xQueueSend(xServerQueue, &message, portMAX_DELAY); // Send message to display task
                 last_state_change_time = current_time;  // Update time for the next transition
@@ -310,9 +310,9 @@ void vBarcodeTask(void *pvParameters) {
             scanned_timings[count_scanned_bar] = time_diff;
             last_state_change_time = current_time;
             count_scanned_bar++;
-            printf("BARCODE: Transition Detected [%d]: %s - IR Value: %d, Width of Previous Bar: %llu microseconds, Previous Bar Colour: %s\n", count_scanned_bar,
+            /* printf("BARCODE: Transition Detected [%d]: %s - IR Value: %d, Width of Previous Bar: %llu microseconds, Previous Bar Colour: %s\n", count_scanned_bar,
                     current_state_black ? "Black" : "White",
-                    current_ir_value, scanned_timings[count_scanned_bar - 1], current_state_black ? "White": "Black");
+                    current_ir_value, scanned_timings[count_scanned_bar - 1], current_state_black ? "White": "Black"); */
             // snprintf(message, sizeof(message), "BARCODE: Transition Detected [%d]: %s - IR Value: %.2fV, Width of Previous Bar: %llu microseconds, Previous Bar Colour: %s\n", count_scanned_bar,
                     // current_state_black ? "Black" : "White",
                     // current_ir_value, scanned_timings[count_scanned_bar - 1], current_state_black ? "White": "Black");
@@ -325,7 +325,7 @@ void vBarcodeTask(void *pvParameters) {
                     switch (count_scanned_char) {
                         case 1:
                             if (scanned_char != DELIMIT_CHAR) {
-                                printf("BARCODE: Error - No starting delimiter. Resetting...\n");
+                                // printf("BARCODE: Error - No starting delimiter. Resetting...\n");
                                 // snprintf(message, sizeof(message), "BARCODE: Error - No starting delimiter. Resetting...\n");
                                 // xQueueSend(xServerQueue, &message, portMAX_DELAY); // Send message to display task
                                 reset_barcode();
@@ -335,21 +335,21 @@ void vBarcodeTask(void *pvParameters) {
                             break;
                         case 2:
                             barcode_char = scanned_char;
-                            printf("BARCODE: Scanned Character: %c\n", barcode_char);
+                            // printf("BARCODE: Scanned Character: %c\n", barcode_char);
                             // snprintf(message, sizeof(message), "BARCODE: Scanned Character: %c\n", barcode_char);
                             // xQueueSend(xServerQueue, &message, portMAX_DELAY); // Send message to display task
                             break;
                         case 3:
                             if (scanned_char != DELIMIT_CHAR) {
                                 error_scanning = true;
-                                printf("BARCODE: Error - No ending delimiter. Resetting...\n");
+                                // printf("BARCODE: Error - No ending delimiter. Resetting...\n");
                                 // snprintf(message, sizeof(message), "BARCODE: Error - No ending delimiter. Resetting...\n");
                                 // xQueueSend(xServerQueue, &message, portMAX_DELAY); // Send message to display task
                                 reset_barcode();
                             } else {
-                                printf("BARCODE: Barcode Successfully Decoded: %c\n", barcode_char);
-                                // snprintf(message, sizeof(message), "BARCODE: Barcode Successfully Decoded: %c\n", barcode_char);
-                                // xQueueSend(xServerQueue, &message, portMAX_DELAY); // Send message to display task
+                                // printf("BARCODE: Barcode Successfully Decoded: %c\n", barcode_char);
+                                snprintf(message, sizeof(message), "BARCODE: Barcode Successfully Decoded: %c\n", barcode_char);
+                                xQueueSend(xServerQueue, &message, portMAX_DELAY); // Send message to display task
                                 scan_started = false;
                             }
                             reset_barcode();
@@ -358,9 +358,9 @@ void vBarcodeTask(void *pvParameters) {
                             break;
                     }
                 } else {
-                    printf("BARCODE: Error - Invalid character detected. Resetting...\n");
-                    // snprintf(message, sizeof(message), "BARCODE: Error - Invalid character detected. Resetting...\n");
-                    // xQueueSend(xServerQueue, &message, portMAX_DELAY); // Send message to display task
+                    // printf("BARCODE: Error - Invalid character detected. Resetting...\n");
+                    snprintf(message, sizeof(message), "BARCODE: Error - Invalid character detected. Resetting...\n");
+                    xQueueSend(xServerQueue, &message, portMAX_DELAY); // Send message to display task
                     reset_barcode();
                 }
                 count_scanned_bar = 0;
@@ -369,6 +369,7 @@ void vBarcodeTask(void *pvParameters) {
             last_state_black = current_state_black;
         }
 
+        taskYIELD();
         vTaskDelay(pdMS_TO_TICKS(1));
     }
 }
@@ -425,8 +426,8 @@ void init_barcode(void) {
     init_button();
     // Create queue for communication between tasks
     // xServerQueue = xQueueCreate(10, sizeof(char[200]));
-    xTaskCreate(vBarcodeTask, "Barcode Task", configMINIMAL_STACK_SIZE * 4, NULL, tskIDLE_PRIORITY + 2, &xBarcodeTaskHandle);
-    xTaskCreate(vButtonTask, "Button Task", configMINIMAL_STACK_SIZE, NULL, tskIDLE_PRIORITY + 1, &xButtonTaskHandle);
+    xTaskCreate(vBarcodeTask, "Barcode Task", configMINIMAL_STACK_SIZE * 4, NULL, tskIDLE_PRIORITY + 4, &xBarcodeTaskHandle);
+    // xTaskCreate(vButtonTask, "Button Task", configMINIMAL_STACK_SIZE, NULL, tskIDLE_PRIORITY + 1, &xButtonTaskHandle);
     // xTaskCreate(vDisplayTask, "Display Task", 1024, NULL, 2, &xDisplayTaskHandle);
 }
 

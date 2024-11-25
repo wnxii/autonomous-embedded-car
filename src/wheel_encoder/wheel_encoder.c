@@ -46,6 +46,7 @@ void left_encoder_task(void *params) {
                 }
             }
         }
+        taskYIELD();
         vTaskDelayUntil(&last_wake_time, pdMS_TO_TICKS(10));  // Adjust frequency as needed
     }
 }
@@ -73,6 +74,7 @@ void right_encoder_task(void *params) {
                 }
             }
         }
+        taskYIELD();
         vTaskDelayUntil(&last_wake_time, pdMS_TO_TICKS(10)); // Adjust frequency as needed
     }
 }
@@ -103,8 +105,8 @@ void init_wheel_encoders() {
     right_data_mutex = xSemaphoreCreateMutex();
 
     // Create separate tasks for each encoder
-    xTaskCreate(left_encoder_task, "Left Encoder Task", configMINIMAL_STACK_SIZE * 4, NULL, tskIDLE_PRIORITY + 1, NULL);
-    xTaskCreate(right_encoder_task, "Right Encoder Task", configMINIMAL_STACK_SIZE * 4, NULL, tskIDLE_PRIORITY + 1, NULL);
+    xTaskCreate(left_encoder_task, "Left Encoder Task", configMINIMAL_STACK_SIZE * 4, NULL, tskIDLE_PRIORITY + 4, NULL);
+    xTaskCreate(right_encoder_task, "Right Encoder Task", configMINIMAL_STACK_SIZE * 4, NULL, tskIDLE_PRIORITY + 4, NULL);
 
 }
 

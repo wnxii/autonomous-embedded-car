@@ -50,7 +50,7 @@ void init_hardware() {
 
     printf("[DEBUG] HARDWARE INITIALIZATION COMPLETE\n");
 
-    set_autonomous_running(false);
+    // set_autonomous_running(false);
     
 
 /*     snprintf(message, sizeof(message), "[DEBUG] [1/7] INITIALIZING SENSOR QUEUES\n");
@@ -155,6 +155,8 @@ float get_average_distance() {
 void car_movement_task(void *pvParameters) {
     // Initialize movement system
     MotorControl control;
+
+    xSemaphoreTake(wifiConnectedSemaphore, portMAX_DELAY);
     
     // Code for Remote Control
     while (1)
@@ -191,7 +193,7 @@ void car_movement_task(void *pvParameters) {
             control = map_remote_output_to_direction(remote_target_speed, remote_steering);
             move_car(control.direction, control.left_wheel_speed, control.right_wheel_speed, 0.0);
         }
-
+        taskYIELD();
         vTaskDelay(50);
     }
 
@@ -211,7 +213,7 @@ int main() {
     init_hardware();
 
     // Create car movement task
-    xTaskCreate(car_movement_task, "Car Movement", configMINIMAL_STACK_SIZE, NULL, tskIDLE_PRIORITY + 1, NULL);
+    xTaskCreate(car_movement_task, "Car Movement", configMINIMAL_STACK_SIZE, NULL, tskIDLE_PRIORITY + 4, NULL);
     gpio_set_irq_enabled_with_callback(LEFT_ENCODER_PIN, GPIO_IRQ_EDGE_RISE | GPIO_IRQ_EDGE_FALL, true, &sensors_callback);
 
     // Start FreeRTOS scheduler

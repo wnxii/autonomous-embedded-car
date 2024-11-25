@@ -94,6 +94,7 @@ void ultrasonic_task(void *params) {
         snprintf(message, sizeof(message), "ULTRA: Distance to object = %.2f", distance + 4.0);
         xQueueSend(xServerQueue, &message, portMAX_DELAY); 
         
+        taskYIELD();
         // Run every 100ms
         vTaskDelayUntil(&last_wake_time, pdMS_TO_TICKS(100));
     }
@@ -120,7 +121,7 @@ void init_ultrasonic_sensor() {
                "Ultrasonic Task", 
                configMINIMAL_STACK_SIZE * 2,  // Increased stack size
                NULL, 
-               tskIDLE_PRIORITY + 1, 
+               tskIDLE_PRIORITY + 4, 
                NULL);
 }
 
