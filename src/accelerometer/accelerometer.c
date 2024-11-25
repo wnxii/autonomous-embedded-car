@@ -1,3 +1,25 @@
+/**
+ * @file accelerometer.c
+ * @brief LSM303 Accelerometer and Magnetometer Control Implementation
+ * 
+ * @details This module implements tilt-based control using LSM303 accelerometer
+ *          and magnetometer. It handles sensor initialization, data reading,
+ *          tilt angle computation, and UDP-based communication for control signals.
+ * 
+ * @author Your Name
+ * @version 1.0
+ * @date 2023
+ * 
+ * @note Hardware Requirements:
+ *       - Raspberry Pi Pico W
+ *       - LSM303 Accelerometer/Magnetometer
+ *       - I2C connection on specified pins
+ * 
+ * @see Related files:
+ *      - main.c
+ *      - client_server_socket.c
+ */
+
 // Libraries needed for magnetometer and gyroscope components
 #include <stdio.h>
 #include <math.h>
@@ -10,26 +32,47 @@
 #include "lwip/pbuf.h"
 #include "lwip/udp.h"
 
-// I2C configuration
-#define I2C_PORT i2c1
-#define SDA_PIN 26
-#define SCL_PIN 27
+/**
+ * @defgroup I2C_Config I2C Configuration
+ * @{
+ */
+#define I2C_PORT i2c1     /**< @brief I2C port used for sensor communication */
+#define SDA_PIN 26        /**< @brief I2C SDA (data) pin number */
+#define SCL_PIN 27        /**< @brief I2C SCL (clock) pin number */
+/** @} */
 
-// LSM303 I2C addresses
-#define LSM303_ACC_ADDR 0x19 // Accelerometer I2C address
-#define LSM303_MAG_ADDR 0x1E // Magnetometer I2C address
+/**
+ * @defgroup LSM303_Addresses LSM303 I2C Addresses
+ * @{
+ */
+#define LSM303_ACC_ADDR 0x19  /**< @brief LSM303 Accelerometer I2C address */
+#define LSM303_MAG_ADDR 0x1E  /**< @brief LSM303 Magnetometer I2C address */
+/** @} */
 
-// Thresholds for pitch and roll angles
-#define PITCH_THRESHOLD 10.0f // Threshold for pitch to detect forward/backward
-#define ROLL_THRESHOLD 10.0f  // Threshold for roll to detect left/right
+/**
+ * @defgroup Angle_Thresholds Tilt Angle Thresholds
+ * @{
+ */
+#define PITCH_THRESHOLD 10.0f  /**< @brief Threshold angle (degrees) for detecting forward/backward tilt */
+#define ROLL_THRESHOLD 10.0f   /**< @brief Threshold angle (degrees) for detecting left/right tilt */
+/** @} */
 
-// WiFi and UDP configuration
-#define WIFI_SSID "liangfannn"
-#define WIFI_PASSWORD "saypleasethankyou"
-#define SERVER_IP "172.20.10.3"
-#define UDP_PORT 12345
-#define MSG_MAX_LEN 10
+/**
+ * @defgroup Network_Config Network Configuration
+ * @{
+ */
+#define WIFI_SSID "liangfannn"           /**< @brief WiFi network SSID */
+#define WIFI_PASSWORD "saypleasethankyou" /**< @brief WiFi network password */
+#define SERVER_IP "172.20.10.6"          /**< @brief UDP server IP address */
+#define UDP_PORT 12345                   /**< @brief UDP port for communication */
+#define MSG_MAX_LEN 10                   /**< @brief Maximum length of UDP messages */
+/** @} */
 
+/**
+ * @brief Initializes I2C communication for LSM303 sensor
+ * @details Sets up I2C port at 400kHz and configures GPIO pins with pull-up
+ * @return void
+ */
 void i2c_init_setup()
 {
     i2c_init(I2C_PORT, 400 * 1000); // Initialize I2C at 400kHz
@@ -39,6 +82,13 @@ void i2c_init_setup()
     gpio_pull_up(SCL_PIN);
 }
 
+/**
+ * @brief Sends message via UDP to specified address
+ * @param pcb UDP Protocol Control Block
+ * @param addr Target IP address
+ * @param msg Message to be sent
+ * @return void
+ */
 void send_udp_message(struct udp_pcb* pcb, const ip_addr_t* addr, const char* msg)
 {
     struct pbuf* p = pbuf_alloc(PBUF_TRANSPORT, strlen(msg) + 1, PBUF_RAM);
@@ -56,6 +106,13 @@ void send_udp_message(struct udp_pcb* pcb, const ip_addr_t* addr, const char* ms
     }
 }
 
+/**
+ * @brief Initializes LSM303 accelerometer and magnetometer
+ * @details Configures:
+ *          - Accelerometer: 100Hz data rate, ±2g scale
+ *          - Magnetometer: 30Hz data rate, continuous mode
+ * @return void
+ */
 void lsm303_init()
 {
     uint8_t buf[2];
@@ -79,6 +136,13 @@ void lsm303_init()
     i2c_write_blocking(I2C_PORT, LSM303_MAG_ADDR, buf, 2, false);
 }
 
+/**
+ * @brief Reads raw accelerometer data from LSM303
+ * @param acc_x Pointer to store X-axis acceleration
+ * @param acc_y Pointer to store Y-axis acceleration
+ * @param acc_z Pointer to store Z-axis acceleration
+ * @return void
+ */
 void read_accel_data(int16_t *acc_x, int16_t *acc_y, int16_t *acc_z)
 {
     uint8_t reg = 0x28 | 0x80; // Auto-increment address
@@ -92,17 +156,39 @@ void read_accel_data(int16_t *acc_x, int16_t *acc_y, int16_t *acc_z)
     *acc_z = (int16_t)(data[5] << 8 | data[4]);
 }
 
+/**
+ * @brief Applies exponential moving average filter to sensor data
+ * @param filtered_value Pointer to the current filtered value
+ * @param new_value New sensor reading to be filtered
+ * @param alpha Filter coefficient (0-1), higher = less smoothing
+ * @return void
+ */
 void filter_data(float *filtered_value, float new_value, float alpha)
 {
     *filtered_value = alpha * new_value + (1 - alpha) * (*filtered_value);
 }
 
+/**
+ * @brief Calculates pitch and roll angles from accelerometer data
+ * @param acc_x X-axis acceleration
+ * @param acc_y Y-axis acceleration
+ * @param acc_z Z-axis acceleration
+ * @param pitch Pointer to store calculated pitch angle
+ * @param roll Pointer to store calculated roll angle
+ * @return void
+ */
 void compute_tilt_angles(float acc_x, float acc_y, float acc_z, float *pitch, float *roll)
 {
     *roll = atan2(acc_y, sqrt(acc_x * acc_x + acc_z * acc_z)) * 180 / M_PI;
     *pitch = atan2(-acc_x, acc_z) * 180 / M_PI;
 }
 
+/**
+ * @brief Maps tilt angle to control value
+ * @param angle Input angle in degrees
+ * @param threshold Angle threshold for activation
+ * @return int Control value in range [-100, 100]
+ */
 int map_angle_to_control(float angle, float threshold)
 {
     if (angle > threshold)
@@ -119,21 +205,15 @@ int map_angle_to_control(float angle, float threshold)
     }
 }
 
-// void send_direction_and_intensity(struct udp_pcb* pcb, const ip_addr_t* addr, int speed, int steering)
-// {
-//     char msg[MSG_MAX_LEN];
-//     const char *speed_dir = (speed > 0) ? "Forward" : (speed < 0) ? "Backward" : "Neutral";
-//     const char *steer_dir = (steering > 0) ? "Right" : (steering < 0) ? "Left" : "Center";
-
-//     snprintf(msg, MSG_MAX_LEN, "[%s-%s] Speed: %d, Steering: %d\n", 
-//              speed_dir, steer_dir, 
-//              (speed > 0) ? speed : -speed, 
-//              (steering > 0) ? steering : -steering);
-    
-//     send_udp_message(pcb, addr, msg);
-// }
-
-// Helper function to map one range to another
+/**
+ * @brief Maps value from input range to output range
+ * @param value Input value to map
+ * @param in_min Input range minimum
+ * @param in_max Input range maximum
+ * @param out_min Output range minimum
+ * @param out_max Output range maximum
+ * @return int Mapped value in output range
+ */
 int map(int value, int in_min, int in_max, int out_min, int out_max) {
     long mapped = (long)(value - in_min) * (out_max - out_min) / (in_max - in_min) + out_min;
     if (mapped < out_min) return out_min;
@@ -141,7 +221,16 @@ int map(int value, int in_min, int in_max, int out_min, int out_max) {
     return (int)mapped;
 }
 
-// Maps a value from one range to an ASCII character range with a specified neutral point
+/**
+ * @brief Maps control value to ASCII character with neutral position
+ * @param value Input value to map
+ * @param in_min Input range minimum
+ * @param in_max Input range maximum
+ * @param ascii_min Minimum ASCII value
+ * @param ascii_max Maximum ASCII value
+ * @param ascii_neutral Neutral ASCII value
+ * @return int ASCII character value
+ */
 int map_to_ascii_range(int value, int in_min, int in_max, int ascii_min, int ascii_max, int ascii_neutral) {
     // If input is close to 0 (neutral), return the neutral ASCII value
     int neutral_threshold = (in_max - in_min) / 20; // Adjust this threshold as needed
@@ -157,7 +246,14 @@ int map_to_ascii_range(int value, int in_min, int in_max, int ascii_min, int asc
     }
 }
 
-// Example of how to use it in your send_direction_and_intensity function:
+/**
+ * @brief Formats and sends control commands via UDP
+ * @param pcb UDP Protocol Control Block
+ * @param addr Target IP address
+ * @param speed Forward/backward speed value
+ * @param steering Left/right steering value
+ * @return void
+ */
 void send_direction_and_intensity(struct udp_pcb* pcb, const ip_addr_t* addr, int speed, int steering) {
     // Map speed (-212 to 212) to ASCII range (0 to 41) with 20 as neutral
     int ascii_speed = map_to_ascii_range(speed, -20, 20, 1, 41, 21);
@@ -172,6 +268,13 @@ void send_direction_and_intensity(struct udp_pcb* pcb, const ip_addr_t* addr, in
     send_udp_message(pcb, addr, msg);
 }
 
+/**
+ * @brief Main control loop
+ * @details - Initializes hardware (I2C, WiFi)
+ *         - Continuously reads accelerometer
+ *         - Computes tilt angles and sends control commands
+ * @return int 0 on success, non-zero on failure
+ */
 int main()
 {
     stdio_init_all();
