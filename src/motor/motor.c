@@ -8,6 +8,7 @@
 #include <math.h>
 #include "../wheel_encoder/wheel_encoder.h" // Adjust this path if necessary
 #include "motor.h"
+#include "../wifi/client_server_socket/client_server_socket.h"
 
 // Global motor configurations
 static MotorConfig left_motor = {PWM_PIN1, DIR_PIN1, DIR_PIN2, 0.0f, 0.0f, 0.0f, 0.0f};
@@ -411,6 +412,7 @@ void move_car(MovementDirection direction, float left_target_speed, float right_
 
 // PID control task that stabilse car when moving forward
 void pid_update_task(void *pvParameters) {
+    xSemaphoreTake(wifiConnectedSemaphore, portMAX_DELAY);
     while (1) {
         if (current_movement != STOP || current_movement != PIVOT_LEFT || current_movement != PIVOT_RIGHT) {
             // Only adjust if the target speed is greater than zero

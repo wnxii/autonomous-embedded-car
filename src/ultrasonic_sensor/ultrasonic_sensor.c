@@ -24,6 +24,8 @@ void ultrasonic_task(void *params) {
     TickType_t last_wake_time = xTaskGetTickCount();
     float distance;
     char message[100];
+
+    xSemaphoreTake(wifiConnectedSemaphore, portMAX_DELAY);
     
     while (1) {
         // Reset measurement state

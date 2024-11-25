@@ -436,6 +436,8 @@ void control_motor_on_line_task(void *pvParameters) {
     int left_cycles_remaining = left_scan_cycles;   // Remaining cycles to scan left
     bool scanning_right = true;               // Flag to prioritize right scanning first
 
+    xSemaphoreTake(wifiConnectedSemaphore, portMAX_DELAY);
+
     while (1) {
         uint16_t current_ir_value = get_line_moving_average_adc(); // Get averaged ADC value
         black_line_detected = current_ir_value >= line_contrast_threshold;
@@ -480,7 +482,7 @@ void control_motor_on_line_task(void *pvParameters) {
                 // Line consistently lost: stop the car
                 printf("Line lost consistently. Stopping the car.\n");
                 move_car(STOP, 0.0f, 0.0f, 0.0f);
-                break;  // Exit the loop
+                continue;  // Exit the loop
             }
         }
 
