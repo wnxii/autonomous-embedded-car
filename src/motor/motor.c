@@ -39,8 +39,6 @@ void set_motor_pwm(uint gpio, float duty_cycle, float freq) {
     uint32_t divider = clock_freq / (freq * 65536);
     pwm_set_clkdiv(slice_num, divider);
     pwm_set_wrap(slice_num, 65535);
-    
-    //printf("Setting PWM on GPIO %d with duty cycle %.2f\n", gpio, duty_cycle);
 
     pwm_set_chan_level(slice_num, pwm_gpio_to_channel(gpio), duty_cycle * 65535);
 
@@ -50,7 +48,6 @@ void set_motor_pwm(uint gpio, float duty_cycle, float freq) {
 // PID calculation function
 float calculate_pid(float set_point, float current_value, PIDState* pid_state) {
     float error = set_point - current_value;
-    //printf("Calculating PID: Set Point = %.2f, Current Value = %.2f, Error = %.2f\n", set_point, current_value, error);
 
     // Proportional term
     float p_term = (KP * error);
@@ -67,7 +64,6 @@ float calculate_pid(float set_point, float current_value, PIDState* pid_state) {
 
     // Calculate output
     float output = p_term + i_term + d_term;
-    // output = scaleToPWM(output);
 
     float corrected_speed = current_duty_cycle += output;
 
@@ -78,28 +74,16 @@ float calculate_pid(float set_point, float current_value, PIDState* pid_state) {
     } else if (corrected_speed < MIN_DUTY_CYCLE) {
         corrected_speed = MIN_DUTY_CYCLE;
     }
-
-    // printf("PID output = %.2f (P: %.2f, I: %.2f, D: %.2f)\n", corrected_speed, p_term, i_term, d_term);
     return corrected_speed;
 }
 
 // Control motor forward, backward, steer left, steer right
 void control_motor_direction(MotorConfig* motor, bool forward, float target_speed) {
-    // printf("Controlling motor on PWM pin %d - %s\n", motor->pwm_pin, (motor == &left_motor) ? "Left motor" : "Right motor");
-    // printf("Setting Target Speed (%.2f) on - %s\n", target_speed, (motor == &left_motor) ? "Left motor" : "Right motor");
-
     gpio_put(motor->dir_pin1, !forward);
     gpio_put(motor->dir_pin2, forward);
 
     motor->target_speed = target_speed;
 
-    // Obtain current speed from encoder
-    // motor->current_speed = (motor == &left_motor) ? get_left_speed() : get_right_speed();
-    // printf("Current speed from encoder: %.2f\n", motor->current_speed);
-
-
-
-    // set_motor_pwm(motor->pwm_pin, MAX_DUTY_CYCLE, 256.0f);
 }
 
 // Helper function to calculate angle when performing pivot turns
@@ -108,161 +92,14 @@ float get_angle_turned_pivot() {
     float wheel_base = 10.0f; // Distance between wheels in cm, adjust based on robot dimensions
     float left_dist = fabs(get_left_distance());  // Take absolute values to sum distances
     float right_dist = fabs(get_right_distance());
-    // printf("Left Distance: %f", left_dist);
-    // printf("Right Distance: %f", right_dist);
 
     // Calculate the angle turned in degrees using the sum of wheel distances
     float angle = (left_dist + right_dist) / wheel_base * (180.0f / M_PI);
-    // printf("Pivot turn angle turned: %.2f degrees\n", angle);
     return angle;
 }
 
-// Task to control the motor during turning
-/* void pivot_turn_control_task(void *pvParameters) {
-    float target_angle = *(float *)pvParameters;
-    MovementDirection direction = current_movement;
-    
-    // Turn until the angle is reached (+-5.0) 
-    float current_angle = 0.0f;
-    while (current_angle < target_angle - 5.0f || current_angle > target_angle + 5.0f) {  // Keep adjusting until close to target angle
-        if ((current_angle - target_angle) > 5.0f) {
-            break;
-        } 
-        current_angle = get_angle_turned_pivot(); // Update current angle
-
-        if (direction == PIVOT_RIGHT) {
-            // Apply reverse and forward direction to left and right motor respectively for right turn
-            gpio_put(left_motor.dir_pin1, 0);
-            gpio_put(left_motor.dir_pin2, 1);
-            gpio_put(right_motor.dir_pin1, 1);
-            gpio_put(right_motor.dir_pin2, 0);
-            
-            set_motor_pwm(left_motor.pwm_pin, MAX_DUTY_CYCLE-0.2, 1000.0f);
-            set_motor_pwm(right_motor.pwm_pin, MAX_DUTY_CYCLE-0.2, 1000.0f);
-                
-        } else if (direction == PIVOT_LEFT) {
-            // Apply forward and reverse direction to left and right motor respectively for left turn
-            gpio_put(left_motor.dir_pin1, 1);
-            gpio_put(left_motor.dir_pin2, 0);
-            gpio_put(right_motor.dir_pin1, 0);
-            gpio_put(right_motor.dir_pin2, 1);
-
-            set_motor_pwm(left_motor.pwm_pin, MAX_DUTY_CYCLE-0.2, 1000.0f); 
-            set_motor_pwm(right_motor.pwm_pin, MAX_DUTY_CYCLE-0.2, 1000.0f); 
-        }
-
-        // Update current angle based on encoder data
-        current_angle = get_angle_turned_pivot();
-        
-        vTaskDelay(pdMS_TO_TICKS(2.5));  // Delay to let motors adjust
-    }
-    
-    // Reset turning flag and clean up
-    pivot_turning_active = false;
-    vPortFree(pvParameters); // Free allocated memory for angle
-    vTaskDelete(NULL); // Delete this task
-} */
-
-// Task to control the motor during turning based on duration
-/* void pivot_turn_control_task(void *pvParameters) {
-    // Extract the duration from the parameters
-    float target_duration_ms = *(float *)pvParameters;
-    MovementDirection direction = current_movement;
-    
-    // Start time tracking
-    TickType_t start_time = xTaskGetTickCount();
-    TickType_t duration_ticks = pdMS_TO_TICKS(target_duration_ms);
-
-    while ((xTaskGetTickCount() - start_time) < duration_ticks) {  // Run for the target duration
-        if (direction == PIVOT_RIGHT) {
-            // Apply reverse and forward direction to left and right motor respectively for right turn
-            gpio_put(left_motor.dir_pin1, 0);
-            gpio_put(left_motor.dir_pin2, 1);
-            gpio_put(right_motor.dir_pin1, 1);
-            gpio_put(right_motor.dir_pin2, 0);
-
-            set_motor_pwm(left_motor.pwm_pin, MAX_DUTY_CYCLE, 256.0f);
-            set_motor_pwm(right_motor.pwm_pin, MAX_DUTY_CYCLE, 256.0f);
-        } else if (direction == PIVOT_LEFT) {
-            // Apply forward and reverse direction to left and right motor respectively for left turn
-            gpio_put(left_motor.dir_pin1, 1);
-            gpio_put(left_motor.dir_pin2, 0);
-            gpio_put(right_motor.dir_pin1, 0);
-            gpio_put(right_motor.dir_pin2, 1);
-
-            set_motor_pwm(left_motor.pwm_pin, MAX_DUTY_CYCLE, 256.0f);
-            set_motor_pwm(right_motor.pwm_pin, MAX_DUTY_CYCLE, 256.0f);
-        }
-
-        vTaskDelay(pdMS_TO_TICKS(1));  // Short delay to prevent busy looping
-    }
-
-    // Stop the motors after the duration
-    gpio_put(left_motor.dir_pin1, 0);
-    gpio_put(left_motor.dir_pin2, 0);
-    gpio_put(right_motor.dir_pin1, 0);
-    gpio_put(right_motor.dir_pin2, 0);
-
-    // Reset the turning flag and clean up
-    pivot_turning_active = false;
-    vPortFree(pvParameters); // Free allocated memory for the duration
-    vTaskDelete(NULL);       // Delete this task
-} */
-
-
-// Control motor turning Left or Right
-/* void control_motor_pivot_turn(float target_angle) {
-    if (!pivot_turning_active) {
-        // Set pivot_turning_active to true to indicate tasks are running
-        pivot_turning_active = true;
-        // Allocate memory for passing target angle and direction
-        float *angle_param = pvPortMalloc(sizeof(float));
-        if (angle_param == NULL) {
-            printf("Failed to allocate memory for angle parameter\n");
-            return;
-        }
-        *angle_param = target_angle;
-        reset_left_encoder();
-        reset_right_encoder();
-         // Start the turn control task with the angle and direction as parameters
-        if (xTaskCreate(pivot_turn_control_task, "Pivot Turn Control", configMINIMAL_STACK_SIZE, (void *)angle_param, tskIDLE_PRIORITY + 1, NULL) != pdPASS) {
-            printf("Failed to create Pivot Turn Control task\n");
-            vPortFree(angle_param);
-            pivot_turning_active = false;
-        }
-    }   
-} */
-
-// Function to control pivot turning based on duration
-/* void control_motor_pivot_turn(float duration_ms) {
-    if (!pivot_turning_active) {
-        // Set pivot_turning_active to true to indicate task is running
-        pivot_turning_active = true;
-
-        // Allocate memory for passing duration
-        float *duration_param = pvPortMalloc(sizeof(float));
-        if (duration_param == NULL) {
-            printf("Failed to allocate memory for duration parameter\n");
-            return;
-        }
-        *duration_param = duration_ms;
-
-        // Start the pivot turn control task with the duration as parameter
-        if (xTaskCreate(pivot_turn_control_task, "Pivot Turn Control", configMINIMAL_STACK_SIZE * 4, 
-                        (void *)duration_param, tskIDLE_PRIORITY + 1, NULL) != pdPASS) {
-            printf("Failed to create Pivot Turn Control task\n");
-            vPortFree(duration_param);
-            pivot_turning_active = false;
-        }
-    }
-} */
-
 void control_motor_pivot_turn(float duration_ms) {
     // Ensure direction is valid
-
-    // printf("Starting pivot turn: %s for %.2f ms\n", 
-           //(current_movement == PIVOT_RIGHT) ? "Right" : "Left", duration_ms);
-
     // Set motor directions based on the desired pivot direction
     if (current_movement == PIVOT_RIGHT) {
         // Right turn: left motor forward, right motor reverse
@@ -291,8 +128,6 @@ void control_motor_pivot_turn(float duration_ms) {
     gpio_put(right_motor.dir_pin1, 0);
     gpio_put(right_motor.dir_pin2, 0);
 
-    // printf("Pivot turn completed: %s\n", 
-           // (current_movement == PIVOT_RIGHT) ? "Right" : "Left");
 } 
 
 
