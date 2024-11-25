@@ -127,8 +127,8 @@ float get_right_distance() {
     if (xQueuePeek(right_encoder_queue, &data, 0) == pdTRUE) {
         float distance_per_pulse = WHEEL_CIRCUMFERENCE / PULSES_PER_REVOLUTION;
         distance = distance_per_pulse * (float)data.pulse_count;
-        printf("Right Distance - Pulses: %lu, Distance Per Hole: %.2f, Distance: %.2f cm\n",
-               data.pulse_count, distance_per_pulse, distance );
+        // printf("Right Distance - Pulses: %lu, Distance Per Hole: %.2f, Distance: %.2f cm\n",
+               // data.pulse_count, distance_per_pulse, distance );
     } 
     return distance;
 }
@@ -147,9 +147,9 @@ float get_left_speed() {
             if (time_diff > 0) {
                 float distance_per_pulse = WHEEL_CIRCUMFERENCE / PULSES_PER_REVOLUTION;
                 speed = (distance_per_pulse * count_diff) / time_diff;  // Speed in cm/s
-                snprintf(message, sizeof(message), "WHEEL: Left Speed: %.2f cm/s (count diff: %.1f, time diff: %.6f s)\n", 
+                /* snprintf(message, sizeof(message), "WHEEL: Left Speed: %.2f cm/s (count diff: %.1f, time diff: %.6f s)\n", 
                         speed, count_diff, time_diff);
-                xQueueSend(xServerQueue, &message, portMAX_DELAY); // Send message to display task
+                xQueueSend(xServerQueue, &message, portMAX_DELAY); // Send message to display task */
             }
 
             left_last_data = current;
@@ -178,9 +178,9 @@ float get_right_speed() {
             if (time_diff > 0) {
                 float distance_per_pulse = WHEEL_CIRCUMFERENCE / PULSES_PER_REVOLUTION;
                 speed = (distance_per_pulse * count_diff) / time_diff;  // Speed in cm/s
-                snprintf(message, sizeof(message), "WHEEL: Right Speed: %.2f cm/s (count diff: %.1f, time diff: %.6f s)\n", 
+                /* snprintf(message, sizeof(message), "WHEEL: Right Speed: %.2f cm/s (count diff: %.1f, time diff: %.6f s)\n", 
                         speed, count_diff, time_diff);
-                xQueueSend(xServerQueue, &message, portMAX_DELAY); // Send message to display task
+                xQueueSend(xServerQueue, &message, portMAX_DELAY); // Send message to display task */
             } 
 
             right_last_data = current;

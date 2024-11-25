@@ -89,8 +89,8 @@ void ultrasonic_task(void *params) {
 
         xQueueSend(distance_queue, &distance, 0);
 
-        snprintf(message, sizeof(message), "ULTRA: Distance to object = %.2f", distance);
-        xQueueSend(xServerQueue, &message, portMAX_DELAY);
+        /* snprintf(message, sizeof(message), "ULTRA: Distance to object = %.2f", distance);
+        xQueueSend(xServerQueue, &message, portMAX_DELAY); */
         
         // Run every 100ms
         vTaskDelayUntil(&last_wake_time, pdMS_TO_TICKS(100));
@@ -134,9 +134,9 @@ bool is_obstacle_detected(float safety_threshold) {
     char message[100];
     float distance = measure_distance();
     bool obstacle_detected = distance > 0 && distance <= safety_threshold;
-    if (obstacle_detected) {
+    /* if (obstacle_detected) {
         snprintf(message, sizeof(message), "ULTRA: Obstacle detected %.2f away.", distance);
         xQueueSend(xServerQueue, &message, portMAX_DELAY);
-    }
+    } */
     return (obstacle_detected);
 }

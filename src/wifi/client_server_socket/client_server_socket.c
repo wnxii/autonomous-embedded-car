@@ -193,7 +193,7 @@ void wifi_task(__unused void *params) {
 
 void init_sensor_queues() {
     printf("[DEBUG] Creating server queue...\n");
-    xServerQueue = xQueueCreate(10, sizeof(char[200]));
+    xServerQueue = xQueueCreate(30, sizeof(char[200]));
     if (xServerQueue == NULL) {
         printf("[ERROR] Failed to create server queue\n");
         return;
@@ -203,6 +203,6 @@ void init_sensor_queues() {
 
 void init_wifi() {
     printf("[DEBUG] Creating WiFi task...\n");
-    xTaskCreate(wifi_task, "client_task", 4096, NULL, TEST_TASK_PRIORITY, NULL);
+    xTaskCreate(wifi_task, "client_task", 8192, NULL, TEST_TASK_PRIORITY, NULL);
     printf("[DEBUG] WiFi task created successfully\n");
 }

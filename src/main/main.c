@@ -40,13 +40,13 @@ void init_hardware() {
     init_ultrasonic_sensor();
     sleep_ms(1000);
 
-    printf("[DEBUG] [6/7] INITIALIZING BARCODE SCANNER\n");
-    init_barcode();
-    sleep_ms(1000);
-
-    printf("[DEBUG] [7/7] INITIALIZING LINE SENSOR\n");
+    printf("[DEBUG] [6/7] INITIALIZING LINE SENSOR\n");
     init_line_sensor();
     sleep_ms(1000);
+
+    /* printf("[DEBUG] [7/7] INITIALIZING BARCODE SCANNER\n");
+    init_barcode();
+    sleep_ms(1000); */
 
     printf("[DEBUG] HARDWARE INITIALIZATION COMPLETE\n");
     
@@ -155,7 +155,7 @@ void car_movement_task(void *pvParameters) {
 /*     MotorControl control;
     
     // Code for Remote Control
-/*     while (true)
+    while (true)
     {
         // Check for obstacle detection
         if (is_obstacle_detected(SAFETY_THRESHOLD)) {
@@ -203,7 +203,7 @@ int main() {
     init_hardware();
 
     // Create car movement task
-    xTaskCreate(car_movement_task, "Car Movement", configMINIMAL_STACK_SIZE, NULL, tskIDLE_PRIORITY + 1, NULL);
+    // xTaskCreate(car_movement_task, "Car Movement", configMINIMAL_STACK_SIZE, NULL, tskIDLE_PRIORITY + 1, NULL);
     gpio_set_irq_enabled_with_callback(LEFT_ENCODER_PIN, GPIO_IRQ_EDGE_RISE | GPIO_IRQ_EDGE_FALL, true, &sensors_callback);
 
     // Start FreeRTOS scheduler
