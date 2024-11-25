@@ -14,12 +14,24 @@
 #include "../ultrasonic_sensor/ultrasonic_sensor.h"
 #include "main.h"
 
+/**
+ * @file main.c
+ * @brief Main control system for the robotic car.
+ *
+ * This file contains the main logic for initializing hardware components,
+ * handling sensor callbacks, and managing car movement tasks.
+ */
+
 bool obstacle_detected = false; // Flag to track if an obstacle is detected
 
-// Init all sensors required for station 2
+/**
+ * @brief Initialize all required hardware components.
+ *
+ * This function initializes various sensors and components required for
+ * the operation of the robotic car, including sensor queues, UDP dashboard,
+ * wheel encoders, motor, ultrasonic sensor, line sensor, and barcode scanner.
+ */
 void init_hardware() {
-    // char message[100]; // Message buffer
-
     printf("[DEBUG] [1/7] INITIALIZING SENSOR QUEUES\n");
     init_sensor_queues();
     sleep_ms(1000);
@@ -49,14 +61,19 @@ void init_hardware() {
     sleep_ms(1000);
 
     printf("[DEBUG] HARDWARE INITIALIZATION COMPLETE\n");
-
-    // set_autonomous_running(false);
 }
 
-// Callback function for encoder pins
+/**
+ * @brief Callback function for handling sensor interrupts.
+ *
+ * This function is triggered by GPIO interrupts and handles events for
+ * left and right encoder pins, as well as the ultrasonic sensor's echo pin.
+ *
+ * @param gpio The GPIO pin number that triggered the interrupt.
+ * @param events The type of event that occurred (e.g., rising or falling edge).
+ */
 void sensors_callback(uint gpio, uint32_t events) {
     if (gpio == LEFT_ENCODER_PIN) {
-        // printf("Left encoder callback triggered - GPIO %d\n", gpio);
         BaseType_t xHigherPriorityTaskWoken = pdFALSE;
 
         if (xSemaphoreTakeFromISR(left_data_mutex, &xHigherPriorityTaskWoken) == pdTRUE) {
@@ -68,7 +85,6 @@ void sensors_callback(uint gpio, uint32_t events) {
         portYIELD_FROM_ISR(xHigherPriorityTaskWoken);
     } 
     else if (gpio == RIGHT_ENCODER_PIN) {
-        // printf("Right encoder callback triggered - GPIO %d\n", gpio);
         BaseType_t xHigherPriorityTaskWoken = pdFALSE;
 
         if (xSemaphoreTakeFromISR(right_data_mutex, &xHigherPriorityTaskWoken) == pdTRUE) {
@@ -102,82 +118,85 @@ void sensors_callback(uint gpio, uint32_t events) {
     }
 }
 
-// Helper function to get average distance traveled by both wheels
+/**
+ * @brief Calculate the average distance traveled by both wheels.
+ *
+ * This helper function computes the average distance based on the
+ * distances traveled by the left and right wheels.
+ *
+ * @return The average distance traveled by both wheels.
+ */
 float get_average_distance() {
     float average_distance = (get_left_distance() + get_right_distance()) / 2.0f;
-    // printf("Average Distance: %f", average_distance);
     return average_distance;
 }
 
-// Task for car movement
+/**
+ * @brief Task for managing car movement.
+ *
+ * This task handles the movement of the car, including remote control
+ * and obstacle detection. It allows backward movement when an obstacle
+ * is detected and stops the car if forward movement is attempted.
+ *
+ * @param pvParameters Parameters for the task (not used).
+ */
 void car_movement_task(void *pvParameters) {
-    // Initialize movement system
     MotorControl control;
 
     xSemaphoreTake(wifiConnectedSemaphore, portMAX_DELAY);
     
-    // Code for Remote Control
-    while (1)
-    {
+    while (1) {
         if (get_autonomous_running()) {
             continue;
         }
-
-        //xQueueSend(xServerQueue, "Current State - Remote\n", portMAX_DELAY);
         
-        // Check for obstacle detection
         if (is_obstacle_detected(SAFETY_THRESHOLD)) {
             obstacle_detected = true;
-            move_car(STOP, 0.0, 0.0, 0.0); // Stop the car immediately
+            move_car(STOP, 0.0, 0.0, 0.0);
         }
 
-        // If obstacle is detected, only allow backward movement
         if (obstacle_detected) {
-            if (remote_target_speed < 0) { // Allow backward movement only
+            if (remote_target_speed < 0) {
                 control = map_remote_output_to_direction(remote_target_speed, remote_steering);
                 if (control.direction == BACKWARD || control.direction == STEER_BACKWARD_LEFT || control.direction == STEER_BACKWARD_RIGHT) {
                     move_car(control.direction, control.left_wheel_speed, control.right_wheel_speed, 0.0);
                     obstacle_detected = false;
                 } else {
-                    move_car(STOP, 0.0, 0.0, 0.0); // Stop if forward movement is attempted
+                    move_car(STOP, 0.0, 0.0, 0.0);
                     printf("Forward movement blocked due to obstacle.\n");
                 }
             } else {
-                move_car(STOP, 0.0, 0.0, 0.0); // Stop if forward movement is attempted
+                move_car(STOP, 0.0, 0.0, 0.0);
                 printf("Forward movement blocked due to obstacle.\n");
             }
         } else {
-            // Normal operation when no obstacle is detected
             control = map_remote_output_to_direction(remote_target_speed, remote_steering);
             move_car(control.direction, control.left_wheel_speed, control.right_wheel_speed, 0.0);
         }
         taskYIELD();
         vTaskDelay(50);
     }
-
-    // Code for Autonomous Line Following and Barcode Scanning
-    
-    // while(1) {
-    //     move_car(FORWARD, 35.0, 35.0, 0.0);
-    // }
 }
 
-// Main function
+/**
+ * @brief Main function for the car control system.
+ *
+ * This function initializes the system, creates the car movement task,
+ * and starts the FreeRTOS scheduler.
+ *
+ * @return Exit status (not used as the scheduler takes over).
+ */
 int main() {
     stdio_init_all();
     printf("Starting car control system\n");
 
-    // Initialize sensors
     init_hardware();
 
-    // Create car movement task
     xTaskCreate(car_movement_task, "Car Movement", configMINIMAL_STACK_SIZE, NULL, tskIDLE_PRIORITY + 4, NULL);
     gpio_set_irq_enabled_with_callback(LEFT_ENCODER_PIN, GPIO_IRQ_EDGE_RISE | GPIO_IRQ_EDGE_FALL, true, &sensors_callback);
 
-    // Start FreeRTOS scheduler
     vTaskStartScheduler();
 
-    // This point will not be reached because the scheduler is running
     while (1) {
         tight_loop_contents();
     }

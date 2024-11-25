@@ -163,7 +163,6 @@ void init_line_sensor() {
     adc_init();
     adc_gpio_init(LINE_SENSOR_PIN);
 
-    // xTaskCreate(vLineFollowingTask, "Line Following Task", configMINIMAL_STACK_SIZE * 4, NULL, tskIDLE_PRIORITY + 3, NULL);
     xTaskCreate(control_motor_on_line_task, "Control Motor on Line", configMINIMAL_STACK_SIZE * 4, NULL, tskIDLE_PRIORITY + 4, NULL);
 }
 
