@@ -1,3 +1,22 @@
+/**
+ * @file barcode_scanner.c
+ * @brief Implementation of a Code39 barcode scanner using IR sensor
+ * 
+ * This module implements a barcode scanner that can read Code39 barcodes using an IR sensor.
+ * It uses ADC for analog readings, implements moving average filtering, and runs on FreeRTOS
+ * for task management. The scanner can detect and decode both forward and reverse barcode scans.
+ * 
+ * Features:
+ * - Code39 barcode format support
+ * - Bidirectional scanning capability
+ * - Moving average ADC filtering
+ * - FreeRTOS task-based implementation
+ * - Error detection and handling
+ * 
+ * @author Your Team
+ * @date 2023
+ */
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -15,7 +34,6 @@
 
 // Queue handle for message passing
 // QueueHandle_t xDisplayQueue;
-
 
 // Global variable to keep track of barcode scan
 volatile bool error_scanning = false;
@@ -50,16 +68,26 @@ TaskHandle_t xDisplayTaskHandle = NULL;
 // static uint32_t max_barcode_threshold = 0;
 static uint32_t barcode_contrast_threshold = 1200;  // Initial threshold (mid-range)
 
-
-// Function to initialize the ADC for the IR sensor (analog contrast detection)
+/**
+ * @brief Initializes the ADC for IR sensor readings
+ * 
+ * Configures the ADC GPIO pin for analog input to read IR sensor values.
+ * The IR sensor is used for contrast detection in barcode scanning.
+ */
 void init_adc() {
     // adc_init();
     adc_gpio_init(IR_SENSOR_PIN);  // Initialize GPIO for analog input
     // adc_select_input(0);  // Select ADC channel 0 (GPIO26)
 }
 
-
-// Moving average for ADC readings
+/**
+ * @brief Calculates moving average of ADC readings
+ * 
+ * Implements a moving average filter for ADC readings to reduce noise
+ * and improve barcode detection reliability.
+ * 
+ * @return float The averaged ADC reading
+ */
 float get_barcode_moving_average_adc() {
     adc_select_input(0);
     uint16_t adc_value = adc_read();
@@ -74,7 +102,12 @@ float get_barcode_moving_average_adc() {
     return (uint16_t)(sum / MOVING_AVG_WINDOW);  // Convert to volts
 }
 
-// Function to reset barcode
+/**
+ * @brief Resets all barcode scanning variables to their initial state
+ * 
+ * Resets counters, buffers, flags, and status variables to prepare
+ * for a new barcode scan operation.
+ */
 void reset_barcode()
 {
     // Reset number of bars scanned
@@ -105,9 +138,15 @@ void reset_barcode()
     error_scanning = false;
 }
 
-
-
-// Function to parse scanned bars
+/**
+ * @brief Parses the scanned bars to decode the barcode character
+ * 
+ * Processes the timing data of scanned bars to determine bar widths,
+ * creates a binary representation, and matches it against known
+ * Code39 character patterns. Handles both forward and reverse scans.
+ * 
+ * @return char The decoded character or ERROR_CHAR if decoding fails
+ */
 char parse_scanned_bars()
 {    
     // char displayMessage[50];
@@ -239,7 +278,17 @@ char parse_scanned_bars()
     return decoded_char;
 }
 
-// Read and process barcode using ADC
+/**
+ * @brief FreeRTOS task for barcode scanning
+ * 
+ * Main task that handles the barcode scanning process:
+ * - Reads ADC values from IR sensor
+ * - Detects black and white bars
+ * - Times the duration of each bar
+ * - Triggers parsing when a complete character is scanned
+ * 
+ * @param pvParameters Task parameters (unused)
+ */
 void vBarcodeTask(void *pvParameters) {
     xSemaphoreTake(wifiConnectedSemaphore, portMAX_DELAY);
     char message[200]; // Message buffer
@@ -314,9 +363,6 @@ void vBarcodeTask(void *pvParameters) {
                     switch (count_scanned_char) {
                         case 1:
                             if (scanned_char != DELIMIT_CHAR) {
-                                // printf("BARCODE: Error - No starting delimiter. Resetting...\n");
-                                // snprintf(message, sizeof(message), "BARCODE: Error - No starting delimiter. Resetting...\n");
-                                // xQueueSend(xServerQueue, &message, portMAX_DELAY); // Send message to display task
                                 reset_barcode();
                                 error_scanning = true;
                                 continue;
@@ -324,16 +370,10 @@ void vBarcodeTask(void *pvParameters) {
                             break;
                         case 2:
                             barcode_char = scanned_char;
-                            // printf("BARCODE: Scanned Character: %c\n", barcode_char);
-                            // snprintf(message, sizeof(message), "BARCODE: Scanned Character: %c\n", barcode_char);
-                            // xQueueSend(xServerQueue, &message, portMAX_DELAY); // Send message to display task
                             break;
                         case 3:
                             if (scanned_char != DELIMIT_CHAR) {
                                 error_scanning = true;
-                                // printf("BARCODE: Error - No ending delimiter. Resetting...\n");
-                                // snprintf(message, sizeof(message), "BARCODE: Error - No ending delimiter. Resetting...\n");
-                                // xQueueSend(xServerQueue, &message, portMAX_DELAY); // Send message to display task
                                 reset_barcode();
                             } else {
                                 // printf("BARCODE: Barcode Successfully Decoded: %c\n", barcode_char);
@@ -363,7 +403,16 @@ void vBarcodeTask(void *pvParameters) {
     }
 }
 
-// Interrupt callback function
+/**
+ * @brief FreeRTOS task for button handling
+ * 
+ * Monitors button input for scanner control:
+ * - Handles button interrupts
+ * - Controls scan initiation/termination
+ * - Manages error states
+ * 
+ * @param pvParameters Task parameters (unused)
+ */
 void vButtonTask(void *pvParameters)
 {
     xSemaphoreTake(wifiConnectedSemaphore, portMAX_DELAY);
@@ -400,7 +449,12 @@ void vButtonTask(void *pvParameters)
     }
 } */
 
-// Function to initialize button with interrupt for reset
+/**
+ * @brief Initializes button GPIO and interrupt
+ * 
+ * Configures the button GPIO pin and sets up interrupt handling
+ * for scanner control.
+ */
 void init_button() {
     gpio_init(BTN_PIN);
     gpio_set_dir(BTN_PIN, GPIO_IN);
@@ -408,7 +462,14 @@ void init_button() {
     // gpio_set_irq_enabled_with_callback(BTN_PIN, GPIO_IRQ_EDGE_FALL, true, &button_callback);
 }
 
-// Initialize FreeRTOS Tasks
+/**
+ * @brief Initializes the barcode scanner system
+ * 
+ * Sets up all required components for barcode scanning:
+ * - Creates FreeRTOS tasks
+ * - Initializes hardware components
+ * - Sets up communication queues
+ */
 void init_barcode(void) {
     init_adc();
     // Initialize button for resetting the barcode
@@ -420,9 +481,11 @@ void init_barcode(void) {
     // xTaskCreate(vDisplayTask, "Display Task", 1024, NULL, 2, &xDisplayTaskHandle);
 }
 
-
-
-// Program entrypoint
+/**
+ * @brief Program entrypoint
+ * 
+ * Initializes standard I/O and starts the FreeRTOS scheduler.
+ */
 /* int main() {
     // Initialise standard I/O
     stdio_init_all();
