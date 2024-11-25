@@ -19,7 +19,18 @@ static QueueHandle_t distance_queue;
 SemaphoreHandle_t measurement_mutex;
 volatile MeasurementData current_measurement = {0, 0, false, false};
 
-
+/**
+ * @brief Main task function for ultrasonic sensor operation
+ * @param params Task parameters (unused)
+ * 
+ * Continuously measures distance using HC-SR04 ultrasonic sensor:
+ * 1. Resets measurement state
+ * 2. Generates 10μs trigger pulse
+ * 3. Waits for echo response with timeout
+ * 4. Calculates distance based on echo duration
+ * 5. Updates distance queue for other tasks to read
+ * Runs every 100ms
+ */
 void ultrasonic_task(void *params) {
     TickType_t last_wake_time = xTaskGetTickCount();
     float distance;
@@ -99,6 +110,16 @@ void ultrasonic_task(void *params) {
     }
 }
 
+/**
+ * @brief Initializes the ultrasonic sensor and creates required RTOS objects
+ * 
+ * Sets up:
+ * - FreeRTOS queue for distance measurements
+ * - Mutex for thread-safe measurement access
+ * - GPIO pins for trigger and echo
+ * - Interrupt handlers for echo pin
+ * - Creates ultrasonic measurement task
+ */
 void init_ultrasonic_sensor() {
     // Create FreeRTOS objects
     distance_queue = xQueueCreate(1, sizeof(float));  // Reduced to size 1
@@ -124,6 +145,13 @@ void init_ultrasonic_sensor() {
                NULL);
 }
 
+/**
+ * @brief Retrieves the most recent distance measurement
+ * @return float Distance in cm, or -1.0 if no valid measurement available
+ * 
+ * Thread-safe function to peek at the latest distance measurement
+ * from the sensor's queue without removing it
+ */
 float measure_distance() {
     float distance = -1.0f;
     if (xQueuePeek(distance_queue, &distance, 0) != pdTRUE) {
@@ -132,6 +160,14 @@ float measure_distance() {
     return distance;
 }
 
+/**
+ * @brief Checks if an obstacle is detected within the safety threshold
+ * @param safety_threshold Distance threshold in cm to detect obstacles
+ * @return bool True if obstacle detected within threshold, false otherwise
+ * 
+ * Uses the latest distance measurement to determine if an obstacle
+ * is present within the specified safety threshold distance
+ */
 bool is_obstacle_detected(float safety_threshold) {
     char message[100];
     float distance = measure_distance();
