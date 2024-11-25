@@ -255,6 +255,7 @@ char parse_scanned_bars()
 
 // Read and process barcode using ADC
 void vBarcodeTask(void *pvParameters) {
+    xSemaphoreTake(wifiConnectedSemaphore, portMAX_DELAY);
     while(true) {
         /*  float current_ir_value = get_barcode_moving_average_adc(); // Get averaged ADC value in volts
         bool current_state_black = current_ir_value >= CONTRAST_THRESHOLD; */
@@ -364,6 +365,7 @@ void vBarcodeTask(void *pvParameters) {
 // Interrupt callback function
 void vButtonTask(void *pvParameters)
 {
+    xSemaphoreTake(wifiConnectedSemaphore, portMAX_DELAY);
     while (true)
     {
         static TickType_t lastPressTime = 0;

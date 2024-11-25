@@ -439,6 +439,8 @@ void control_motor_on_line_task(void *pvParameters) {
     int black_line_count = 0;                 // Counter for black line detection
     bool is_previous_black_line = false;      // Flag to track previous black line status
 
+    xSemaphoreTake(wifiConnectedSemaphore, portMAX_DELAY);
+
     while (1) {
         uint16_t current_ir_value = get_line_moving_average_adc(); // Get averaged ADC value
         black_line_detected = current_ir_value >= line_contrast_threshold;

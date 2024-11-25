@@ -9,6 +9,7 @@
 #include <stdio.h>
 #include <string.h>
 #include "client_server_socket.h"
+#include "semphr.h"
 
 // Wi-Fi and server configurations
 #define WIFI_SSID "liangfannn"
@@ -17,8 +18,12 @@
 #define SERVER_PORT 12346
 #define TEST_TASK_PRIORITY (tskIDLE_PRIORITY + 2UL)
 
+#define NUM_OF_TASKS 7  // Adjust based on the actual number of tasks waiting
+
 // Global queue for all sensor data
 QueueHandle_t xServerQueue = NULL;
+
+SemaphoreHandle_t wifiConnectedSemaphore;
 
 // Define the global variables
 volatile int remote_target_speed = 0;
@@ -161,6 +166,12 @@ void wifi_task(__unused void *params) {
     // Send initial connection message
     send_message_udp(dashboard_sock, "Connection From Pico Car", &dashboard_server_addr);
     connected = true;
+    // In your WiFi connection task
+    if (connected) {
+        for (int i = 0; i < NUM_OF_TASKS; i++) {
+            xSemaphoreGive(wifiConnectedSemaphore);
+        }
+    }
     printf("[DEBUG] Sent initial connection message\n");
 
     // Message buffers
@@ -208,6 +219,8 @@ void init_sensor_queues() {
 
 void init_wifi() {
     printf("[DEBUG] Creating WiFi task...\n");
+    wifiConnectedSemaphore = xSemaphoreCreateCounting(NUM_OF_TASKS, 0);
+    xSemaphoreTake(wifiConnectedSemaphore, 0); // Take semaphore to lock it initially
     xTaskCreate(wifi_task, "client_task", 8192, NULL, TEST_TASK_PRIORITY, NULL);
     printf("[DEBUG] WiFi task created successfully\n");
 }

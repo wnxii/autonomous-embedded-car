@@ -28,6 +28,8 @@ void left_encoder_task(void *params) {
     EncoderData data, last_sent = {0, 0};
     TickType_t last_wake_time = xTaskGetTickCount();
 
+    xSemaphoreTake(wifiConnectedSemaphore, portMAX_DELAY);
+
     while (1) {
         if (xSemaphoreTake(left_data_mutex, portMAX_DELAY) == pdTRUE) {
             data = left_data;
@@ -52,6 +54,8 @@ void left_encoder_task(void *params) {
 void right_encoder_task(void *params) {
     EncoderData data, last_sent = {0, 0};
     TickType_t last_wake_time = xTaskGetTickCount();
+
+    xSemaphoreTake(wifiConnectedSemaphore, portMAX_DELAY);
     
     while (1) {
         if (xSemaphoreTake(right_data_mutex, portMAX_DELAY) == pdTRUE) {
