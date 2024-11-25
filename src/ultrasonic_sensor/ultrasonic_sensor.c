@@ -136,9 +136,9 @@ bool is_obstacle_detected(float safety_threshold) {
     char message[100];
     float distance = measure_distance();
     bool obstacle_detected = distance > 0 && distance <= safety_threshold;
-    /* if (obstacle_detected) {
+    if (obstacle_detected) {
         snprintf(message, sizeof(message), "ULTRA: Obstacle detected %.2f away.", distance);
         xQueueSend(xServerQueue, &message, portMAX_DELAY);
-    } */
+    }
     return (obstacle_detected);
 }

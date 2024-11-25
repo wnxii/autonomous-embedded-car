@@ -462,7 +462,7 @@ void control_motor_on_line_task(void *pvParameters) {
                 black_line_count = 0;
             }
             // Line detected: reset search state and move forward
-            printf("Black line detected. Moving forward.\n");
+            // printf("Black line detected. Moving forward.\n");
             move_car(FORWARD, forward_speed, forward_speed, 0.0f);
             search_attempts = 0;             // Reset search attempts
             right_cycles_remaining = right_scan_cycles; // Reset right scan cycles
@@ -477,7 +477,7 @@ void control_motor_on_line_task(void *pvParameters) {
             if (search_attempts < lost_line_threshold) {
                 if (scanning_right && right_cycles_remaining > 0) {
                     // Perform a right scan
-                    printf("Searching: Pivot right for %d ms. Remaining right cycles: %d\n", pivot_duration_ms, right_cycles_remaining);
+                    // printf("Searching: Pivot right for %d ms. Remaining right cycles: %d\n", pivot_duration_ms, right_cycles_remaining);
                     move_car(PIVOT_RIGHT, pivot_speed, pivot_speed, pivot_duration_ms);
                     right_cycles_remaining--;  // Decrement right scan cycles
 
@@ -487,7 +487,7 @@ void control_motor_on_line_task(void *pvParameters) {
                     compensate_duration += pivot_duration_ms;
                 } else if (!scanning_right && left_cycles_remaining > 0) {
                     // Perform a left scan
-                    printf("Searching: Pivot left for %d ms. Remaining left cycles: %d\n", pivot_duration_ms, left_cycles_remaining);
+                    // printf("Searching: Pivot left for %d ms. Remaining left cycles: %d\n", pivot_duration_ms, left_cycles_remaining);
                     move_car(PIVOT_LEFT, pivot_speed, pivot_speed, pivot_duration_ms);
                     left_cycles_remaining--;  // Decrement left scan cycles
                     compensate_duration -= pivot_duration_ms;
@@ -520,6 +520,7 @@ void control_motor_on_line_task(void *pvParameters) {
         is_previous_black_line = black_line_detected;
 
         // Small delay for responsive sensor readings
+        taskYIELD();
         vTaskDelay(pdMS_TO_TICKS(10));
     }
 }
@@ -537,6 +538,6 @@ void init_line_sensor() {
     adc_gpio_init(LINE_SENSOR_PIN);
 
     // xTaskCreate(vLineFollowingTask, "Line Following Task", configMINIMAL_STACK_SIZE * 4, NULL, tskIDLE_PRIORITY + 3, NULL);
-    xTaskCreate(control_motor_on_line_task, "Control Motor on Line", configMINIMAL_STACK_SIZE * 4, NULL, tskIDLE_PRIORITY + 1, NULL);
+    xTaskCreate(control_motor_on_line_task, "Control Motor on Line", configMINIMAL_STACK_SIZE * 4, NULL, tskIDLE_PRIORITY + 3, NULL);
 }
 

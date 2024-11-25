@@ -44,9 +44,9 @@ void init_hardware() {
     init_line_sensor();
     sleep_ms(1000);
 
-    /* printf("[DEBUG] [7/7] INITIALIZING BARCODE SCANNER\n");
+    printf("[DEBUG] [7/7] INITIALIZING BARCODE SCANNER\n");
     init_barcode();
-    sleep_ms(1000); */
+    sleep_ms(1000);
 
     printf("[DEBUG] HARDWARE INITIALIZATION COMPLETE\n");
 

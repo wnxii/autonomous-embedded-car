@@ -108,12 +108,12 @@ float get_angle_turned_pivot() {
     float wheel_base = 10.0f; // Distance between wheels in cm, adjust based on robot dimensions
     float left_dist = fabs(get_left_distance());  // Take absolute values to sum distances
     float right_dist = fabs(get_right_distance());
-    printf("Left Distance: %f", left_dist);
-    printf("Right Distance: %f", right_dist);
+    // printf("Left Distance: %f", left_dist);
+    // printf("Right Distance: %f", right_dist);
 
     // Calculate the angle turned in degrees using the sum of wheel distances
     float angle = (left_dist + right_dist) / wheel_base * (180.0f / M_PI);
-    printf("Pivot turn angle turned: %.2f degrees\n", angle);
+    // printf("Pivot turn angle turned: %.2f degrees\n", angle);
     return angle;
 }
 
@@ -260,8 +260,8 @@ float get_angle_turned_pivot() {
 void control_motor_pivot_turn(float duration_ms) {
     // Ensure direction is valid
 
-    printf("Starting pivot turn: %s for %.2f ms\n", 
-           (current_movement == PIVOT_RIGHT) ? "Right" : "Left", duration_ms);
+    // printf("Starting pivot turn: %s for %.2f ms\n", 
+           //(current_movement == PIVOT_RIGHT) ? "Right" : "Left", duration_ms);
 
     // Set motor directions based on the desired pivot direction
     if (current_movement == PIVOT_RIGHT) {
@@ -291,8 +291,8 @@ void control_motor_pivot_turn(float duration_ms) {
     gpio_put(right_motor.dir_pin1, 0);
     gpio_put(right_motor.dir_pin2, 0);
 
-    printf("Pivot turn completed: %s\n", 
-           (current_movement == PIVOT_RIGHT) ? "Right" : "Left");
+    // printf("Pivot turn completed: %s\n", 
+           // (current_movement == PIVOT_RIGHT) ? "Right" : "Left");
 } 
 
 
