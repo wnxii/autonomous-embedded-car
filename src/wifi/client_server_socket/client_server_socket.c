@@ -15,7 +15,7 @@
 #define WIFI_SSID "liangfannn"
 #define WIFI_PASSWORD "saypleasethankyou"
 #define SERVER_IP "172.20.10.5"
-#define SERVER_PORT 12346
+#define SERVER_PORT 12340
 #define TEST_TASK_PRIORITY (tskIDLE_PRIORITY + 2UL)
 
 #define NUM_OF_TASKS 7  // Adjust based on the actual number of tasks waiting
@@ -150,6 +150,11 @@ void wifi_task(__unused void *params) {
         return;
     }
     printf("[DEBUG] Bound remote socket successfully\n");
+
+    struct netif *netif = netif_default;
+    if (netif != NULL) {
+        printf("Car's Server Address: %s\n", ip4addr_ntoa(netif_ip4_addr(netif)));
+    }
 
     // Set up server address
     struct sockaddr_in dashboard_server_addr = {

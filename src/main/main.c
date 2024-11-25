@@ -36,9 +36,9 @@ void init_hardware() {
     init_motor();
     sleep_ms(1000);
 
-    /* printf("[DEBUG] [5/7] INITIALIZING ULTRASONIC SENSOR\n");
+    printf("[DEBUG] [5/7] INITIALIZING ULTRASONIC SENSOR\n");
     init_ultrasonic_sensor();
-    sleep_ms(1000); */
+    sleep_ms(1000);
 
     printf("[DEBUG] [6/7] INITIALIZING LINE SENSOR\n");
     init_line_sensor();
@@ -49,6 +49,8 @@ void init_hardware() {
     sleep_ms(1000);
 
     printf("[DEBUG] HARDWARE INITIALIZATION COMPLETE\n");
+
+    set_autonomous_running(false);
     
 
 /*     snprintf(message, sizeof(message), "[DEBUG] [1/7] INITIALIZING SENSOR QUEUES\n");
@@ -152,11 +154,14 @@ float get_average_distance() {
 // Task for car movement
 void car_movement_task(void *pvParameters) {
     // Initialize movement system
-/*     MotorControl control;
+    MotorControl control;
     
     // Code for Remote Control
-    while (true)
+    while (1)
     {
+        if (get_autonomous_running()) {
+            continue;
+        }
         // Check for obstacle detection
         if (is_obstacle_detected(SAFETY_THRESHOLD)) {
             obstacle_detected = true;
@@ -185,13 +190,13 @@ void car_movement_task(void *pvParameters) {
         }
 
         vTaskDelay(50);
-    }  */
+    }
 
     // Code for Autonomous Line Following and Barcode Scanning
     
-    while(1) {
-        move_car(FORWARD, 35.0, 35.0, 0.0);
-    }
+    // while(1) {
+    //     move_car(FORWARD, 35.0, 35.0, 0.0);
+    // }
 }
 
 // Main function
@@ -203,7 +208,7 @@ int main() {
     init_hardware();
 
     // Create car movement task
-    // xTaskCreate(car_movement_task, "Car Movement", configMINIMAL_STACK_SIZE, NULL, tskIDLE_PRIORITY + 1, NULL);
+    xTaskCreate(car_movement_task, "Car Movement", configMINIMAL_STACK_SIZE, NULL, tskIDLE_PRIORITY + 1, NULL);
     gpio_set_irq_enabled_with_callback(LEFT_ENCODER_PIN, GPIO_IRQ_EDGE_RISE | GPIO_IRQ_EDGE_FALL, true, &sensors_callback);
 
     // Start FreeRTOS scheduler
