@@ -70,6 +70,7 @@ void control_motor_on_line_task(void *pvParameters) {
     int black_line_count = 0;                 // Counter for black line detection
     bool is_previous_black_line = false;      // Flag to track previous black line status
     int compensate_duration = 0; // duration for compensating after kill switch, +ve left, -ve right
+    float spin_offset = 1.4;
 
     xSemaphoreTake(wifiConnectedSemaphore, portMAX_DELAY);
 
@@ -82,7 +83,7 @@ void control_motor_on_line_task(void *pvParameters) {
                 black_line_count++;
                 if (black_line_count >= black_line_threshold) {
                     set_autonomous_running(true);
-                    xQueueSend(xServerQueue, "Current State - Autonomous Mode", portMAX_DELAY);
+                    //xQueueSend(xServerQueue, "Current State - Autonomous Mode", portMAX_DELAY);
 
                     continue;
                 }
@@ -130,10 +131,10 @@ void control_motor_on_line_task(void *pvParameters) {
                 printf("Line lost consistently. Stopping the car.\n");
                 printf("[DEBUG] COMPENSATE DURATION: %d\n", compensate_duration);
                 if (compensate_duration > 0) {
-                    move_car(PIVOT_RIGHT, pivot_speed, pivot_speed, compensate_duration);
+                    move_car(PIVOT_RIGHT, pivot_speed, pivot_speed, compensate_duration * spin_offset);
                 }
                 else if (compensate_duration < 0) {
-                    move_car(PIVOT_LEFT, pivot_speed, pivot_speed, -compensate_duration);
+                    move_car(PIVOT_LEFT, pivot_speed, pivot_speed, -compensate_duration * spin_offset);
                 }
 
                 move_car(STOP, 0.0f, 0.0f, 0.0f);

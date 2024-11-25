@@ -123,7 +123,7 @@ void car_movement_task(void *pvParameters) {
             continue;
         }
 
-        xQueueSend(xServerQueue, "Current State - Remote\n", portMAX_DELAY);
+        //xQueueSend(xServerQueue, "Current State - Remote\n", portMAX_DELAY);
         
         // Check for obstacle detection
         if (is_obstacle_detected(SAFETY_THRESHOLD)) {

@@ -11,6 +11,7 @@
 #include "queue.h"
 #include <stdbool.h>
 #include "../wifi/client_server_socket/client_server_socket.h"
+#include "../line_following/line_following.h"
 
 // Queue handle for message passing
 // QueueHandle_t xDisplayQueue;
@@ -244,6 +245,9 @@ void vBarcodeTask(void *pvParameters) {
     char message[200]; // Message buffer
     // bool current_state_black = false;
     while(true) {
+        if (get_autonomous_running() == false)
+            continue;
+
         /*  float current_ir_value = get_barcode_moving_average_adc(); // Get averaged ADC value in volts
         bool current_state_black = current_ir_value >= CONTRAST_THRESHOLD; */
         uint16_t current_ir_value = get_barcode_moving_average_adc(); // Get averaged ADC value

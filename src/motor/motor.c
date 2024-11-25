@@ -272,7 +272,7 @@ void pid_update_task(void *pvParameters) {
             } 
         } 
         taskYIELD();  
-        vTaskDelay(pdMS_TO_TICKS(50)); // Adjust delay as needed for responsiveness
+        vTaskDelay(pdMS_TO_TICKS(10)); // Adjust delay as needed for responsiveness
     }
 }
 
