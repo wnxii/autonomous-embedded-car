@@ -30,7 +30,15 @@ volatile int remote_target_speed = 0;
 volatile int remote_steering = 0;
 volatile bool connected = false;
 
-// Helper function to unmap from one range to another
+/**
+ * @brief Unmaps a value from one range to another with bounds checking
+ * @param value Input value to unmap
+ * @param in_min Input range minimum
+ * @param in_max Input range maximum  
+ * @param out_min Output range minimum
+ * @param out_max Output range maximum
+ * @return int Unmapped value constrained to output range
+ */
 int unmap(int value, int in_min, int in_max, int out_min, int out_max)
 {
     long unmapped = (long)(value - in_min) * (out_max - out_min) / (in_max - in_min) + out_min;
@@ -41,7 +49,16 @@ int unmap(int value, int in_min, int in_max, int out_min, int out_max)
     return (int)unmapped;
 }
 
-// Unmaps an ASCII value back to the original range
+/**
+ * @brief Converts ASCII control values back to original numeric ranges
+ * @param ascii_value Input ASCII value
+ * @param ascii_min Minimum ASCII range value
+ * @param ascii_max Maximum ASCII range value
+ * @param out_min Desired output minimum
+ * @param out_max Desired output maximum
+ * @param ascii_neutral Neutral/center ASCII value
+ * @return int Unmapped value in original range, with 0 at neutral position
+ */
 int unmap_from_ascii_range(int ascii_value, int ascii_min, int ascii_max, int out_min, int out_max, int ascii_neutral)
 {
     // If ASCII value is neutral, return 0
@@ -63,7 +80,14 @@ int unmap_from_ascii_range(int ascii_value, int ascii_min, int ascii_max, int ou
     }
 }
 
-// Example usage in UDP receive callback:
+/**
+ * @brief Processes received control messages for speed and steering
+ * @param data Pointer to received control data buffer
+ * 
+ * Extracts ASCII values from received data and converts them to:
+ * - Speed values (-212 to 212)
+ * - Steering values (-80 to 80) 
+ */
 void handle_received_controls(const char *data)
 {
     // Extract ASCII values
@@ -78,7 +102,14 @@ void handle_received_controls(const char *data)
 
 }
 
-
+/**
+ * @brief Sends UDP message to specified server
+ * @param socket UDP socket descriptor
+ * @param msg Message to send
+ * @param server_addr Pointer to server address structure
+ * 
+ * Handles error checking and debug logging for UDP message transmission
+ */
 static void send_message_udp(int socket, const char *msg, struct sockaddr_in *server_addr) {
     if (!msg || strlen(msg) == 0) {
         printf("[DEBUG] Attempted to send empty message\n");
@@ -94,6 +125,17 @@ static void send_message_udp(int socket, const char *msg, struct sockaddr_in *se
     } 
 }
 
+/**
+ * @brief Main WiFi communication task
+ * @param params Task parameters (unused)
+ * 
+ * Manages:
+ * - WiFi connection setup
+ * - UDP socket creation and binding
+ * - Remote control message reception
+ * - Sensor data transmission
+ * - Connection status monitoring
+ */
 void wifi_task(__unused void *params) {
     remote_target_speed = 0;
     remote_steering = 0;
@@ -202,6 +244,12 @@ void wifi_task(__unused void *params) {
     }
 }
 
+/**
+ * @brief Initializes queue for sensor data transmission
+ * 
+ * Creates FreeRTOS queue for buffering sensor messages
+ * to be sent to dashboard server
+ */
 void init_sensor_queues() {
     printf("[DEBUG] Creating server queue...\n");
     xServerQueue = xQueueCreate(30, sizeof(char[200]));
@@ -212,6 +260,14 @@ void init_sensor_queues() {
     printf("[DEBUG] Created server queue successfully\n");
 }
 
+/**
+ * @brief Initializes WiFi components and creates communication task
+ * 
+ * Sets up:
+ * - WiFi connection semaphore
+ * - Communication task with appropriate priority
+ * - Initial connection state
+ */
 void init_wifi() {
     printf("[DEBUG] Creating WiFi task...\n");
     wifiConnectedSemaphore = xSemaphoreCreateCounting(NUM_OF_TASKS, 0);

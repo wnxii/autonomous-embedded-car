@@ -1,3 +1,29 @@
+/*******************************************************************************
+ * File: line_following.c
+ *
+ * Description:
+ * Line following implementation for autonomous robot navigation using an IR sensor.
+ * Uses FreeRTOS for task management and implements a moving average filter for
+ * sensor readings. Provides autonomous line detection and following capabilities
+ * with search patterns when line is lost.
+ *
+ * Hardware Requirements:
+ * - IR Line Sensor on ADC1 (GPIO27)
+ * - Dual DC Motors for differential drive
+ *
+ * Features:
+ * - Moving average filter for sensor noise reduction
+ * - Thread-safe status management using mutexes
+ * - Automatic line search pattern when line is lost
+ * - Configurable thresholds and timing parameters
+ *
+ * Dependencies:
+ * - FreeRTOS
+ * - Pico SDK
+ * - motor.h
+ * - client_server_socket.h
+ ******************************************************************************/
+
 #include <stdio.h>
 #include "pico/stdlib.h"
 #include "hardware/adc.h"
@@ -10,23 +36,30 @@
 #include "../motor/motor.h"
 #include "../wifi/client_server_socket/client_server_socket.h"
 
-
+// Global variables for line detection
 uint16_t line_adc_buffer[MOVING_AVG_WINDOW] = {0};  // ADC buffer for moving average
 uint8_t line_buffer_index = 0;
 
-// Mutex for thread-safe access to shared variables
+// Thread synchronization primitives
 SemaphoreHandle_t black_line_mutex;
 SemaphoreHandle_t autonomous_running_mutex;
 
+// State variables
 volatile bool black_line_detected = false; // Global variable to store status of black line detection
 volatile bool autonomous_running = false; // Global variable to store status of autonomous running
 bool white_detected = false;
 
-// Threshold variables
+// Sensor configuration
 static uint32_t line_contrast_threshold = 1400;  // Initial threshold (mid-range)
 
-
-// Moving average for ADC readings
+/**
+ * @brief Calculates moving average of ADC readings for noise reduction
+ *
+ * Reads ADC value from line sensor and maintains a moving average over
+ * MOVING_AVG_WINDOW samples to reduce noise in measurements.
+ *
+ * @return float Averaged ADC value
+ */
 float get_line_moving_average_adc() {
     adc_select_input(1);
     uint16_t adc_value = adc_read();
@@ -39,8 +72,13 @@ float get_line_moving_average_adc() {
         sum += line_adc_buffer[i];
     }
     return (uint16_t)(sum / MOVING_AVG_WINDOW); 
-} 
+}
 
+/**
+ * @brief Thread-safe getter for autonomous running state
+ *
+ * @return bool Current autonomous running state
+ */
 bool get_autonomous_running() {
     bool running;
     xSemaphoreTake(autonomous_running_mutex, portMAX_DELAY);
@@ -49,12 +87,35 @@ bool get_autonomous_running() {
     return running;
 }
 
+/**
+ * @brief Thread-safe setter for autonomous running state
+ *
+ * @param running New autonomous running state
+ */
 void set_autonomous_running(bool running) {
     xSemaphoreTake(autonomous_running_mutex, portMAX_DELAY);
     autonomous_running = running;
     xSemaphoreGive(autonomous_running_mutex);
 }
 
+/**
+ * @brief Main line following control task
+ *
+ * Implements line following logic with:
+ * - Line detection using IR sensor
+ * - Forward motion when line detected
+ * - Search pattern when line lost
+ * - Automatic recovery with right/left scanning
+ * - Emergency stop after extended line loss
+ *
+ * Key Parameters:
+ * - lost_line_threshold: Maximum search attempts before stopping
+ * - black_line_threshold: Cycles needed to confirm line detection
+ * - forward_speed: Normal driving speed
+ * - pivot_speed: Turning speed for search pattern
+ *
+ * @param pvParameters FreeRTOS task parameters (unused)
+ */
 void control_motor_on_line_task(void *pvParameters) {
     const int lost_line_threshold = 200;       // Total cycles before stopping the car
     const int right_scan_cycles = 5;          // Number of cycles to scan to the right
@@ -151,10 +212,14 @@ void control_motor_on_line_task(void *pvParameters) {
     }
 }
 
-
-
-
-// Function to initialize the ADC for Line Following
+/**
+ * @brief Initializes line following hardware and tasks
+ *
+ * Sets up:
+ * - ADC for line sensor
+ * - FreeRTOS synchronization primitives
+ * - Control task for line following
+ */
 void init_line_sensor() {
     // Create mutexes for shared variables
     black_line_mutex = xSemaphoreCreateMutex();
@@ -163,7 +228,5 @@ void init_line_sensor() {
     adc_init();
     adc_gpio_init(LINE_SENSOR_PIN);
 
-    // xTaskCreate(vLineFollowingTask, "Line Following Task", configMINIMAL_STACK_SIZE * 4, NULL, tskIDLE_PRIORITY + 3, NULL);
     xTaskCreate(control_motor_on_line_task, "Control Motor on Line", configMINIMAL_STACK_SIZE * 4, NULL, tskIDLE_PRIORITY + 4, NULL);
 }
-
