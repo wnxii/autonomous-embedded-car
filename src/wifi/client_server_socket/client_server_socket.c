@@ -76,12 +76,6 @@ void handle_received_controls(const char *data)
     // Unmap steering (ASCII 0-40, neutral 20) back to -80 to 80
     remote_steering = unmap_from_ascii_range(ascii_steering, 1, 41, -20, 20, 21);
 
-    // printf("Decoded values - Speed: %d, Steering: %d\n", remote_target_speed, remote_steering);
-
-    // Now you can use speed and steering values to control your device
-    // For example:
-    // set_motor_speed(speed);
-    // set_steering_angle(steering);
 }
 
 

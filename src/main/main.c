@@ -51,48 +51,6 @@ void init_hardware() {
     printf("[DEBUG] HARDWARE INITIALIZATION COMPLETE\n");
 
     // set_autonomous_running(false);
-    
-
-/*     snprintf(message, sizeof(message), "[DEBUG] [1/7] INITIALIZING SENSOR QUEUES\n");
-    xQueueSend(xServerQueue, &message, portMAX_DELAY);
-    sleep_ms(1000);
-
-    snprintf(message, sizeof(message), "[DEBUG] [2/7] INITIALIZING UDP DASHBOARD AND REMOTE SOCKET\n");
-    xQueueSend(xServerQueue, &message, portMAX_DELAY);
-    sleep_ms(1000);   */
-
-
-    /* snprintf(message, sizeof(message), "[DEBUG] [3/7] INITIALIZING WHEEL ENCODERS\n");
-    xQueueSend(xServerQueue, &message, portMAX_DELAY);
-    init_wheel_encoders();
-    sleep_ms(1000);
-
-    snprintf(message, sizeof(message), "[DEBUG] [4/7] INITIALIZING MOTOR\n");
-    xQueueSend(xServerQueue, &message, portMAX_DELAY);
-    init_motor();
-    sleep_ms(1000); */
-
-/*     snprintf(message, sizeof(message), "[DEBUG] [5/7] INITIALIZING BARCODE SCANNER\n");
-    xQueueSend(xServerQueue, &message, portMAX_DELAY);
-    init_barcode();
-    sleep_ms(1000);
-
-    snprintf(message, sizeof(message), "[DEBUG] [6/7] INITIALIZING LINE SENSOR\n");
-    xQueueSend(xServerQueue, &message, portMAX_DELAY);
-    init_line_sensor();
-    sleep_ms(1000); */
-
-    /* snprintf(message, sizeof(message), "[DEBUG] [7/7] INITIALIZING ULTRASONIC SENSOR\n");
-    xQueueSend(xServerQueue, &message, portMAX_DELAY);
-    init_ultrasonic_sensor();
-    sleep_ms(1000);
-
-
-
-    snprintf(message, sizeof(message), "[DEBUG] HARDWARE INITIALIZATION COMPLETE\n");
-    xQueueSend(xServerQueue, &message, portMAX_DELAY); */
-
-
 }
 
 // Callback function for encoder pins

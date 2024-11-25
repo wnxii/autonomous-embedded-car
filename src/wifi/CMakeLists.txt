@@ -1,8 +1,0 @@
-if (NOT FREERTOS_KERNEL_PATH AND NOT DEFINED ENV{FREERTOS_KERNEL_PATH})
-    message("Skipping Pico W FreeRTOS examples as FREERTOS_KERNEL_PATH not defined")
-else()
-    include(FreeRTOS_Kernel_import.cmake)
-    add_subdirectory(server_socket)
-    add_subdirectory(accel_with_client_socket)
-    add_subdirectory(client_server_socket)
-endif()

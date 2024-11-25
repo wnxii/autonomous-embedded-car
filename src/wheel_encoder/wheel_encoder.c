@@ -23,7 +23,16 @@ SemaphoreHandle_t right_data_mutex;
 static QueueHandle_t left_encoder_queue;
 static QueueHandle_t right_encoder_queue;
 
-// Task to handle the left encoder
+/**
+ * @brief Task handler for left wheel encoder measurements
+ * @param params Task parameters (unused)
+ * 
+ * Continuously monitors left wheel encoder:
+ * - Takes mutex to safely access shared encoder data
+ * - Checks for changes in pulse count
+ * - Updates queue with new measurements
+ * - Runs every 10ms
+ */
 void left_encoder_task(void *params) {
     EncoderData data, last_sent = {0, 0};
     TickType_t last_wake_time = xTaskGetTickCount();
@@ -51,7 +60,16 @@ void left_encoder_task(void *params) {
     }
 }
 
-// Task to handle the right encoder
+/**
+ * @brief Task handler for right wheel encoder measurements
+ * @param params Task parameters (unused)
+ * 
+ * Continuously monitors right wheel encoder:
+ * - Takes mutex to safely access shared encoder data
+ * - Checks for changes in pulse count
+ * - Updates queue with new measurements
+ * - Runs every 10ms
+ */
 void right_encoder_task(void *params) {
     EncoderData data, last_sent = {0, 0};
     TickType_t last_wake_time = xTaskGetTickCount();
@@ -79,7 +97,15 @@ void right_encoder_task(void *params) {
     }
 }
 
-// Initialization function for both encoders
+/**
+ * @brief Initializes both wheel encoders and their FreeRTOS components
+ * 
+ * Sets up:
+ * - GPIO pins for both encoders with pull-up and interrupts
+ * - Creates queues for encoder data
+ * - Creates mutexes for thread-safe data access
+ * - Spawns separate tasks for each encoder
+ */
 void init_wheel_encoders() {
     // Initialize left encoder
     left_data.pulse_count = 0;
@@ -110,7 +136,13 @@ void init_wheel_encoders() {
 
 }
 
-// Function to get distance for left encoder
+/**
+ * @brief Calculates total distance traveled by left wheel
+ * @return float Distance in centimeters
+ * 
+ * Converts encoder pulse count to distance using:
+ * distance = (wheel_circumference / pulses_per_rev) * pulse_count
+ */
 float get_left_distance() {
     EncoderData data;
     float distance = 0.0f;
@@ -118,14 +150,18 @@ float get_left_distance() {
     if (xQueuePeek(left_encoder_queue, &data, 0) == pdTRUE) {
         float distance_per_pulse = WHEEL_CIRCUMFERENCE / PULSES_PER_REVOLUTION;
         distance = distance_per_pulse * (float)data.pulse_count;
-        // printf("Left Distance - Pulses: %lu, Distance Per Hole: %.2f, Distance: %.2f cm\n",
-               // data.pulse_count, distance_per_pulse, distance);
     }
 
     return distance;
 }
 
-// Function to get distance for right encoder
+/**
+ * @brief Calculates total distance traveled by right wheel
+ * @return float Distance in centimeters
+ * 
+ * Converts encoder pulse count to distance using:
+ * distance = (wheel_circumference / pulses_per_rev) * pulse_count
+ */
 float get_right_distance() {
     EncoderData data;
     float distance = 0.0f;
@@ -133,13 +169,19 @@ float get_right_distance() {
     if (xQueuePeek(right_encoder_queue, &data, 0) == pdTRUE) {
         float distance_per_pulse = WHEEL_CIRCUMFERENCE / PULSES_PER_REVOLUTION;
         distance = distance_per_pulse * (float)data.pulse_count;
-        // printf("Right Distance - Pulses: %lu, Distance Per Hole: %.2f, Distance: %.2f cm\n",
-               // data.pulse_count, distance_per_pulse, distance );
     } 
     return distance;
 }
 
-// Function to get speed for a left encoder
+/**
+ * @brief Calculates current speed of left wheel
+ * @return float Speed in centimeters per second
+ * 
+ * Uses differential measurement:
+ * - Compares current pulse count with previous reading
+ * - Calculates time difference between readings
+ * - speed = (distance_per_pulse * pulse_diff) / time_diff
+ */
 float get_left_speed() {
     EncoderData current;
     float speed = 0.0f;
@@ -159,18 +201,20 @@ float get_left_speed() {
             }
 
             left_last_data = current;
-        } else {
-            // printf("No pulse count change detected for left encoder\n");
-        }
-    } else {
-        // printf("No data available in left encoder queue\n");
+        } 
     }
-
-
     return speed;
 }
 
-// Function to get speed for right encoder
+/**
+ * @brief Calculates current speed of right wheel
+ * @return float Speed in centimeters per second
+ * 
+ * Uses differential measurement:
+ * - Compares current pulse count with previous reading
+ * - Calculates time difference between readings
+ * - speed = (distance_per_pulse * pulse_diff) / time_diff
+ */
 float get_right_speed() {
     EncoderData current;
     float speed = 0.0f;
@@ -190,17 +234,20 @@ float get_right_speed() {
             } 
 
             right_last_data = current;
-        } else {
-            // printf("No pulse count change detected for right encoder\n");
         }
-    } else {
-        // printf("No data available in right encoder queue\n");
-    }
+    } 
 
     return speed;
 }
 
-// Reset Left Encoder
+/**
+ * @brief Resets left encoder measurements to zero
+ * 
+ * Thread-safe reset of:
+ * - Current pulse count and timestamp
+ * - Last recorded data
+ * - Encoder queue
+ */
 void reset_left_encoder() {
     if (xSemaphoreTake(left_data_mutex, portMAX_DELAY) == pdTRUE) {
         left_data.pulse_count = 0;
@@ -215,7 +262,14 @@ void reset_left_encoder() {
     }
 }
 
-// Reset Right Encoder
+/**
+ * @brief Resets right encoder measurements to zero
+ * 
+ * Thread-safe reset of:
+ * - Current pulse count and timestamp
+ * - Last recorded data
+ * - Encoder queue
+ */
 void reset_right_encoder() {
     if (xSemaphoreTake(right_data_mutex, portMAX_DELAY) == pdTRUE) {
         right_data.pulse_count = 0;

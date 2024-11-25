@@ -73,21 +73,6 @@ float get_barcode_moving_average_adc() {
     return (uint16_t)(sum / MOVING_AVG_WINDOW);  // Convert to volts
 }
 
-/* void update_barcode_threshold(uint16_t adc_reading) {
-    // Update min and max thresholds
-    if (adc_reading < min_barcode_threshold) {
-        min_barcode_threshold = adc_reading;
-    }
-    if (adc_reading > max_barcode_threshold) {
-        max_barcode_threshold = adc_reading;
-    }
-
-    // Recalculate contrast threshold as the average of min and max
-    barcode_contrast_threshold = (min_barcode_threshold + max_barcode_threshold) / 2;
-    // printf("Contrast Threshold: %u\n", barcode_contrast_threshold);
-} */
-
-
 // Function to reset barcode
 void reset_barcode()
 {
