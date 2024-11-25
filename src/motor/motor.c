@@ -1,3 +1,22 @@
+/**
+ * @file motor.c
+ * @brief Motor control implementation with PID speed regulation
+ *
+ * This module implements motor control functionality for a two-wheeled robot,
+ * including:
+ * - PWM-based motor speed control
+ * - PID speed regulation
+ * - Directional control (forward, backward, steering)
+ * - Remote control mapping
+ * - Pivot turning capabilities
+ *
+ * The implementation uses FreeRTOS for task management and includes
+ * safety features like duty cycle limits and motor shutdown.
+ *
+ * @author Your Team
+ * @date 2023
+ */
+
 #include "FreeRTOS.h"
 #include "task.h"
 #include "pico/stdlib.h"
@@ -29,7 +48,16 @@ bool pivot_turning_active = false;
 // Global variable to store latest duty cycle set to control speed
 static float current_duty_cycle = 1.0;
 
-// Function to set PWM for a motor
+/**
+ * @brief Configure and set PWM for a motor
+ *
+ * Sets up PWM configuration for a motor including frequency and duty cycle.
+ * The function handles all necessary GPIO setup and PWM slice configuration.
+ *
+ * @param gpio The GPIO pin number for PWM output
+ * @param duty_cycle The desired duty cycle (0.0 to 1.0)
+ * @param freq The desired PWM frequency in Hz
+ */
 void set_motor_pwm(uint gpio, float duty_cycle, float freq) {
     current_duty_cycle = duty_cycle;
     gpio_set_function(gpio, GPIO_FUNC_PWM);
@@ -45,7 +73,17 @@ void set_motor_pwm(uint gpio, float duty_cycle, float freq) {
     pwm_set_enabled(slice_num, true);
 }
 
-// PID calculation function
+/**
+ * @brief Calculate PID control output
+ *
+ * Implements a PID controller for motor speed regulation.
+ * Includes anti-windup protection and output limiting.
+ *
+ * @param set_point The desired speed setpoint
+ * @param current_value The current measured speed
+ * @param pid_state Pointer to PID state structure
+ * @return float The calculated control output (duty cycle)
+ */
 float calculate_pid(float set_point, float current_value, PIDState* pid_state) {
     float error = set_point - current_value;
 
@@ -77,7 +115,15 @@ float calculate_pid(float set_point, float current_value, PIDState* pid_state) {
     return corrected_speed;
 }
 
-// Control motor forward, backward, steer left, steer right
+/**
+ * @brief Control motor direction and speed
+ *
+ * Sets the direction pins and target speed for a specified motor.
+ *
+ * @param motor Pointer to motor configuration structure
+ * @param forward True for forward direction, false for backward
+ * @param target_speed The desired motor speed
+ */
 void control_motor_direction(MotorConfig* motor, bool forward, float target_speed) {
     gpio_put(motor->dir_pin1, !forward);
     gpio_put(motor->dir_pin2, forward);
@@ -86,7 +132,14 @@ void control_motor_direction(MotorConfig* motor, bool forward, float target_spee
 
 }
 
-// Helper function to calculate angle when performing pivot turns
+/**
+ * @brief Calculate angle turned during pivot maneuver
+ *
+ * Calculates the approximate angle turned by the robot during a pivot turn
+ * based on wheel encoder readings and robot geometry.
+ *
+ * @return float The calculated angle in degrees
+ */
 float get_angle_turned_pivot() {
     // Implement an approximate calculation for pivot turn angle
     float wheel_base = 10.0f; // Distance between wheels in cm, adjust based on robot dimensions
@@ -98,6 +151,14 @@ float get_angle_turned_pivot() {
     return angle;
 }
 
+/**
+ * @brief Execute a pivot turn maneuver
+ *
+ * Controls the motors to perform a pivot turn for a specified duration.
+ * One wheel moves forward while the other moves backward.
+ *
+ * @param duration_ms Duration of the turn in milliseconds
+ */
 void control_motor_pivot_turn(float duration_ms) {
     // Ensure direction is valid
     // Set motor directions based on the desired pivot direction
@@ -131,7 +192,16 @@ void control_motor_pivot_turn(float duration_ms) {
 } 
 
 
-// Function to map remote controller output to forward / backwards direction and target speed
+/**
+ * @brief Map remote control inputs to motor control parameters
+ *
+ * Converts remote control direction and steering inputs into appropriate
+ * motor speeds and directions for both wheels.
+ *
+ * @param remote_output_direction Forward/backward control value (-20 to 20)
+ * @param remote_output_steering Left/right control value (-20 to 20)
+ * @return MotorControl Structure containing calculated wheel speeds and direction
+ */
 MotorControl map_remote_output_to_direction(int remote_output_direction, int remote_output_steering) {
     MotorControl control;
 
@@ -186,7 +256,12 @@ MotorControl map_remote_output_to_direction(int remote_output_direction, int rem
     return control;
 } 
 
-// Disable all pins to stop motor
+/**
+ * @brief Stop all motor movement
+ *
+ * Immediately stops both motors by disabling all control pins.
+ * Used for emergency stops or when movement is complete.
+ */
 void stop_motor() {
     gpio_put(left_motor.pwm_pin, 0);
     gpio_put(right_motor.pwm_pin, 0);
@@ -196,7 +271,17 @@ void stop_motor() {
     gpio_put(right_motor.dir_pin2, 0);
 }
 
-// Unified movement function
+/**
+ * @brief Unified function for controlling car movement
+ *
+ * Controls the car's movement including forward, backward, and turning motions.
+ * Implements speed ramping for smooth acceleration and deceleration.
+ *
+ * @param direction The desired movement direction
+ * @param left_target_speed Target speed for left motor
+ * @param right_target_speed Target speed for right motor
+ * @param duration Duration of movement in milliseconds
+ */
 void move_car(MovementDirection direction, float left_target_speed, float right_target_speed, float duration) {
     current_movement = direction; // Update current direction
     // printf("Moving car - Direction: %d, Left Target Speed: %.2f, Right Target Speed: %.2f\n", direction, left_target_speed, right_target_speed);
@@ -245,7 +330,14 @@ void move_car(MovementDirection direction, float left_target_speed, float right_
     }
 }
 
-// PID control task that stabilse car when moving forward
+/**
+ * @brief FreeRTOS task for PID control updates
+ *
+ * Periodically updates PID calculations to maintain stable motor speeds.
+ * Runs as a separate task to ensure consistent timing of PID updates.
+ *
+ * @param pvParameters Task parameters (unused)
+ */
 void pid_update_task(void *pvParameters) {
     xSemaphoreTake(wifiConnectedSemaphore, portMAX_DELAY);
     while (1) {
@@ -276,7 +368,15 @@ void pid_update_task(void *pvParameters) {
     }
 }
 
-// Initialization function
+/**
+ * @brief Initialize motor control system
+ *
+ * Sets up all necessary components for motor control:
+ * - Configures GPIO pins
+ * - Initializes PWM
+ * - Creates PID control task
+ * - Sets up synchronization primitives
+ */
 void init_motor() {
     // Initialize GPIO for motors
     gpio_init(DIR_PIN1);
@@ -296,5 +396,3 @@ void init_motor() {
     xTaskCreate(pid_update_task, "PID Update", configMINIMAL_STACK_SIZE, NULL, tskIDLE_PRIORITY+4, NULL);
     // xTaskCreate(control_motor_on_line_task, "Control Motor on Line", configMINIMAL_STACK_SIZE, NULL, tskIDLE_PRIORITY + 1, NULL);
 }
-
-
