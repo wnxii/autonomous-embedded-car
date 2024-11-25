@@ -314,7 +314,7 @@ void set_autonomous_running(bool running) {
 
 
 void control_motor_on_line_task(void *pvParameters) {
-    const int lost_line_threshold = 5000;  // Number of cycles without line detection before stopping
+    const int lost_line_threshold = 10000;  // Number of cycles without line detection before stopping
     const float forward_speed = 25.0f;      // Speed for forward motion
     const float pivot_speed = 0.0f;        // Speed for pivot motion
     const int pivot_duration_ms = 150;      // Duration for each pivot turn in milliseconds
@@ -339,10 +339,10 @@ void control_motor_on_line_task(void *pvParameters) {
             if (search_attempts < lost_line_threshold) {
                 if (searching_right) {
                     printf("Searching: Pivot right for %d ms.\n", pivot_duration_ms);
-                    move_car(PIVOT_RIGHT, pivot_speed, pivot_speed, 50);
+                    move_car(PIVOT_RIGHT, pivot_speed, pivot_speed, 20);
                 } else {
                     printf("Searching: Pivot left for %d ms.\n", pivot_duration_ms);
-                    move_car(PIVOT_LEFT, pivot_speed, pivot_speed, 50);
+                    move_car(PIVOT_LEFT, pivot_speed, pivot_speed, 20);
                 }
 
                 // Alternate search direction
