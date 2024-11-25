@@ -13,8 +13,6 @@
  * The implementation uses FreeRTOS for task management and includes
  * safety features like duty cycle limits and motor shutdown.
  *
- * @author Your Team
- * @date 2023
  */
 
 #include "FreeRTOS.h"
@@ -284,7 +282,6 @@ void stop_motor() {
  */
 void move_car(MovementDirection direction, float left_target_speed, float right_target_speed, float duration) {
     current_movement = direction; // Update current direction
-    // printf("Moving car - Direction: %d, Left Target Speed: %.2f, Right Target Speed: %.2f\n", direction, left_target_speed, right_target_speed);
     switch(direction) {
         case FORWARD:
             control_motor_direction(&left_motor, true, left_target_speed);
@@ -394,5 +391,4 @@ void init_motor() {
 
     // Create PID update task for maintaining speed alignment between wheels
     xTaskCreate(pid_update_task, "PID Update", configMINIMAL_STACK_SIZE, NULL, tskIDLE_PRIORITY+4, NULL);
-    // xTaskCreate(control_motor_on_line_task, "Control Motor on Line", configMINIMAL_STACK_SIZE, NULL, tskIDLE_PRIORITY + 1, NULL);
 }

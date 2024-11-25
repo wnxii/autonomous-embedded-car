@@ -48,7 +48,6 @@ void left_encoder_task(void *params) {
             if (data.pulse_count != last_sent.pulse_count) {
                 xQueueReset(left_encoder_queue);
                 if (xQueueSendToBack(left_encoder_queue, &data, 0) == pdTRUE) {
-                    // printf("Left encoder - Count: %lu, Timestamp: %llu\n", data.pulse_count, data.timestamp);
                     last_sent = data;
                 }  else {
                     printf("Left encoder queue send failed\n");
@@ -85,7 +84,6 @@ void right_encoder_task(void *params) {
             if (data.pulse_count != last_sent.pulse_count) {
                 xQueueReset(right_encoder_queue);
                 if (xQueueSendToBack(right_encoder_queue, &data, 0) == pdTRUE) {
-                    // printf("Right encoder - Count: %lu, Timestamp: %llu\n", data.pulse_count, data.timestamp);
                     last_sent = data;
                 } else {
                     printf("Right encoder queue send failed\n");
@@ -254,7 +252,6 @@ void reset_left_encoder() {
         left_data.timestamp = 0;
         left_last_data.pulse_count = 0;
         left_last_data.timestamp = 0;
-        printf("Left Encoder reset - count and timestamp zeroed\n");
         xSemaphoreGive(left_data_mutex);
 
         // Clear the left encoder queue
@@ -276,7 +273,6 @@ void reset_right_encoder() {
         right_data.timestamp = 0;
         right_last_data.pulse_count = 0;
         right_last_data.timestamp = 0;
-        printf("Right Encoder reset - count and timestamp zeroed\n");
         xSemaphoreGive(right_data_mutex);
 
         // Clear the right encoder queue

@@ -13,8 +13,6 @@
  * - FreeRTOS task-based implementation
  * - Error detection and handling
  * 
- * @author Your Team
- * @date 2023
  */
 
 #include <stdio.h>
@@ -140,7 +138,6 @@ void reset_barcode()
  */
 char parse_scanned_bars()
 {    
-    // char displayMessage[50];
     // Initialise array of indexes
     uint16_t indexes[CODE_LENGTH] = {0, 1, 2, 3, 4, 5, 6, 7, 8};
 
@@ -213,13 +210,11 @@ char parse_scanned_bars()
         {
             // Update decoded character
             decoded_char = DELIMIT_CHAR;
-            // match = true;
         }
         else if (strcmp(scanned_code, DELIMIT_REVERSED_CODE) == 0)
         {
             // Update decoded character
             decoded_char = DELIMIT_CHAR;
-            // match = true;
             // Update scan direction
             reverse_scan = true;
         }
@@ -236,7 +231,6 @@ char parse_scanned_bars()
                 {
                     // Update decoded character and immediately break out of loop
                     decoded_char = array_char[i];
-                    // match = true;
                     break;
                 }
             }
@@ -251,7 +245,6 @@ char parse_scanned_bars()
                 {
                     // Update decoded character and immediately break out of loop
                     decoded_char = array_char[i];
-                    // match = true;
                     break;
                 }
             }
@@ -276,7 +269,6 @@ char parse_scanned_bars()
 void vBarcodeTask(void *pvParameters) {
     xSemaphoreTake(wifiConnectedSemaphore, portMAX_DELAY);
     char message[200]; // Message buffer
-    // bool current_state_black = false;
     while(true) {
         if (get_autonomous_running() == false)
             continue;
@@ -366,53 +358,6 @@ void vBarcodeTask(void *pvParameters) {
     }
 }
 
-/**
- * @brief FreeRTOS task for button handling
- * 
- * Monitors button input for scanner control:
- * - Handles button interrupts
- * - Controls scan initiation/termination
- * - Manages error states
- * 
- * @param pvParameters Task parameters (unused)
- */
-void vButtonTask(void *pvParameters)
-{
-    xSemaphoreTake(wifiConnectedSemaphore, portMAX_DELAY);
-    while (true)
-    {
-        static TickType_t lastPressTime = 0;
-        TickType_t debounceDelay = pdMS_TO_TICKS(200); // 200 ms debounce delay
-        TickType_t currentTime = xTaskGetTickCount();
-
-        // Check if button has been pressed (active-low button)
-        if (!gpio_get(BTN_PIN) && (currentTime - lastPressTime > debounceDelay))
-        {
-            lastPressTime = currentTime; // Update last press time
-            reset_barcode();
-            
-            // Send reset message to display task
-            // char message[50];
-            // snprintf(message, sizeof(message), "BARCODE: Button Pressed - reset barcode \n");
-            // xQueueSend(xServerQueue, &message, portMAX_DELAY);
-        }
-
-        vTaskDelay(pdMS_TO_TICKS(50)); // Poll button every 50 ms
-    }
-    
-}
-
-/**
- * @brief Initializes button GPIO and interrupt
- * 
- * Configures the button GPIO pin and sets up interrupt handling
- * for scanner control.
- */
-void init_button() {
-    gpio_init(BTN_PIN);
-    gpio_set_dir(BTN_PIN, GPIO_IN);
-    gpio_set_pulls(BTN_PIN, true, false); // Pull-up resistor (Active-Low)
-}
 
 /**
  * @brief Initializes the barcode scanner system
@@ -424,7 +369,5 @@ void init_button() {
  */
 void init_barcode(void) {
     init_adc();
-    // Initialize button for resetting the barcode
-    init_button();
     xTaskCreate(vBarcodeTask, "Barcode Task", configMINIMAL_STACK_SIZE * 4, NULL, tskIDLE_PRIORITY + 4, &xBarcodeTaskHandle);
 }

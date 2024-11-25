@@ -6,9 +6,7 @@
  *          and magnetometer. It handles sensor initialization, data reading,
  *          tilt angle computation, and UDP-based communication for control signals.
  * 
- * @author Your Name
  * @version 1.0
- * @date 2023
  * 
  * @note Hardware Requirements:
  *       - Raspberry Pi Pico W
