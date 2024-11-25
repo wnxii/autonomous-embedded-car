@@ -33,8 +33,8 @@ This project implements an autonomous robotic car using the Raspberry Pi Pico mi
   - Right Motor: PWM (GP3), DIR1 (GP8), DIR2 (GP9)
 - **Sensors**
   - Line Following IR Sensor: GP27 (ADC)
-  - Wheel Encoders: Left and Right encoder pins
-  - Ultrasonic Sensor: ECHO_PIN
+  - Wheel Encoders: GP4 (Left), Right (GP5)
+  - Ultrasonic Sensor: GP7
 
 ## Software Architecture
 
