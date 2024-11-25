@@ -162,6 +162,9 @@ void car_movement_task(void *pvParameters) {
         if (get_autonomous_running()) {
             continue;
         }
+
+        xQueueSend(xServerQueue, "Current State - Remote\n", portMAX_DELAY);
+        
         // Check for obstacle detection
         if (is_obstacle_detected(SAFETY_THRESHOLD)) {
             obstacle_detected = true;

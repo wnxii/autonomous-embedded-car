@@ -454,6 +454,8 @@ void control_motor_on_line_task(void *pvParameters) {
                 black_line_count++;
                 if (black_line_count >= black_line_threshold) {
                     set_autonomous_running(true);
+                    xQueueSend(xServerQueue, "Current State - Autonomous Mode", portMAX_DELAY);
+
                     continue;
                 }
             } else {

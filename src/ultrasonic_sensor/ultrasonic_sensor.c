@@ -91,8 +91,8 @@ void ultrasonic_task(void *params) {
 
         xQueueSend(distance_queue, &distance, 0);
 
-        /* snprintf(message, sizeof(message), "ULTRA: Distance to object = %.2f", distance);
-        xQueueSend(xServerQueue, &message, portMAX_DELAY); */
+        snprintf(message, sizeof(message), "ULTRA: Distance to object = %.2f", distance + 4.0);
+        xQueueSend(xServerQueue, &message, portMAX_DELAY); 
         
         // Run every 100ms
         vTaskDelayUntil(&last_wake_time, pdMS_TO_TICKS(100));
