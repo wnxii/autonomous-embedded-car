@@ -76,7 +76,7 @@ void handle_received_controls(const char *data)
     // Unmap steering (ASCII 0-40, neutral 20) back to -80 to 80
     remote_steering = unmap_from_ascii_range(ascii_steering, 1, 41, -20, 20, 21);
 
-    printf("Decoded values - Speed: %d, Steering: %d\n", remote_target_speed, remote_steering);
+    // printf("Decoded values - Speed: %d, Steering: %d\n", remote_target_speed, remote_steering);
 
     // Now you can use speed and steering values to control your device
     // For example:
@@ -96,8 +96,8 @@ static void send_message_udp(int socket, const char *msg, struct sockaddr_in *se
     if (result < 0) {
         printf("[DEBUG] Failed to send UDP message: %d\n", result);
     } else {
-        printf("[DEBUG] Sent UDP message (%d bytes): %s\n", result, msg);
-    }
+        // printf("[DEBUG] Sent UDP message (%d bytes): %s\n", result, msg);
+    } 
 }
 
 void wifi_task(__unused void *params) {
@@ -189,7 +189,7 @@ void wifi_task(__unused void *params) {
         if (recv_len >= 2) {
             buffer[recv_len] = '\0';
             handle_received_controls(buffer);
-            printf("[DEBUG] Received control message\n");
+            // printf("[DEBUG] Received control message\n");
         }
 
         // Handle sensor data from xServerQueue

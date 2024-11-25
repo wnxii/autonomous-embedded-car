@@ -442,11 +442,11 @@ void control_motor_on_line_task(void *pvParameters) {
         uint16_t current_ir_value = get_line_moving_average_adc(); // Get averaged ADC value
         black_line_detected = current_ir_value >= line_contrast_threshold;
 
-        printf("[DEBUG] Line Following - Black Line Detected: %d \n", black_line_detected);
+        // printf("[DEBUG] Line Following - Black Line Detected: %d \n", black_line_detected);
 
         if (black_line_detected) {
             // Line detected: reset search state and move forward
-            printf("Black line detected. Moving forward.\n");
+            // printf("Black line detected. Moving forward.\n");
             move_car(FORWARD, forward_speed, forward_speed, 0.0f);
             search_attempts = 0;             // Reset search attempts
             right_cycles_remaining = right_scan_cycles; // Reset right scan cycles
@@ -457,7 +457,7 @@ void control_motor_on_line_task(void *pvParameters) {
             if (search_attempts < lost_line_threshold) {
                 if (scanning_right && right_cycles_remaining > 0) {
                     // Perform a right scan
-                    printf("Searching: Pivot right for %d ms. Remaining right cycles: %d\n", pivot_duration_ms, right_cycles_remaining);
+                    // printf("Searching: Pivot right for %d ms. Remaining right cycles: %d\n", pivot_duration_ms, right_cycles_remaining);
                     move_car(PIVOT_RIGHT, pivot_speed, pivot_speed, pivot_duration_ms);
                     right_cycles_remaining--;  // Decrement right scan cycles
 
@@ -466,7 +466,7 @@ void control_motor_on_line_task(void *pvParameters) {
                     }
                 } else if (!scanning_right && left_cycles_remaining > 0) {
                     // Perform a left scan
-                    printf("Searching: Pivot left for %d ms. Remaining left cycles: %d\n", pivot_duration_ms, left_cycles_remaining);
+                    // printf("Searching: Pivot left for %d ms. Remaining left cycles: %d\n", pivot_duration_ms, left_cycles_remaining);
                     move_car(PIVOT_LEFT, pivot_speed, pivot_speed, pivot_duration_ms);
                     left_cycles_remaining--;  // Decrement left scan cycles
                 } else {
@@ -480,13 +480,14 @@ void control_motor_on_line_task(void *pvParameters) {
                 search_attempts++;
             } else {
                 // Line consistently lost: stop the car
-                printf("Line lost consistently. Stopping the car.\n");
+                // printf("Line lost consistently. Stopping the car.\n");
                 move_car(STOP, 0.0f, 0.0f, 0.0f);
                 continue;  // Exit the loop
             }
         }
 
         // Small delay for responsive sensor readings
+        taskYIELD();
         vTaskDelay(pdMS_TO_TICKS(10));
     }
 }
@@ -504,6 +505,6 @@ void init_line_sensor() {
     adc_gpio_init(LINE_SENSOR_PIN);
 
     // xTaskCreate(vLineFollowingTask, "Line Following Task", configMINIMAL_STACK_SIZE * 4, NULL, tskIDLE_PRIORITY + 3, NULL);
-    xTaskCreate(control_motor_on_line_task, "Control Motor on Line", configMINIMAL_STACK_SIZE * 4, NULL, tskIDLE_PRIORITY + 1, NULL);
+    xTaskCreate(control_motor_on_line_task, "Control Motor on Line", configMINIMAL_STACK_SIZE * 4, NULL, tskIDLE_PRIORITY + 3, NULL);
 }
 

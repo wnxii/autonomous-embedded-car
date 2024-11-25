@@ -9,7 +9,6 @@ extern QueueHandle_t xServerQueue;
 
 extern volatile int remote_target_speed;
 extern volatile int remote_steering;
-extern volatile bool connected;
 
 extern SemaphoreHandle_t wifiConnectedSemaphore;
 
