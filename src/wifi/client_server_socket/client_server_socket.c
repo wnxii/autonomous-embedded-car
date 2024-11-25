@@ -15,7 +15,7 @@
 #define WIFI_SSID "liangfannn"
 #define WIFI_PASSWORD "saypleasethankyou"
 #define SERVER_IP "172.20.10.5"
-#define SERVER_PORT 12346
+#define SERVER_PORT 12340
 #define TEST_TASK_PRIORITY (tskIDLE_PRIORITY + 2UL)
 
 #define NUM_OF_TASKS 7  // Adjust based on the actual number of tasks waiting

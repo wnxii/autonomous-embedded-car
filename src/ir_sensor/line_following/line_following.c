@@ -438,6 +438,7 @@ void control_motor_on_line_task(void *pvParameters) {
     const int black_line_threshold = 100;    // Threshold for black line detection
     int black_line_count = 0;                 // Counter for black line detection
     bool is_previous_black_line = false;      // Flag to track previous black line status
+    int compensate_duration = 0; // duration for compensating after kill switch, +ve left, -ve right
 
     xSemaphoreTake(wifiConnectedSemaphore, portMAX_DELAY);
 
@@ -465,7 +466,7 @@ void control_motor_on_line_task(void *pvParameters) {
             right_cycles_remaining = right_scan_cycles; // Reset right scan cycles
             left_cycles_remaining = left_scan_cycles;   // Reset left scan cycles
             scanning_right = true;          // Start with right scan again
-            
+            compensate_duration = 0;
             
         } else {
             if (get_autonomous_running() == false)
@@ -481,11 +482,13 @@ void control_motor_on_line_task(void *pvParameters) {
                     if (right_cycles_remaining == 0) {
                         scanning_right = false; // Switch to left after right cycles are exhausted
                     }
+                    compensate_duration += pivot_duration_ms;
                 } else if (!scanning_right && left_cycles_remaining > 0) {
                     // Perform a left scan
                     printf("Searching: Pivot left for %d ms. Remaining left cycles: %d\n", pivot_duration_ms, left_cycles_remaining);
                     move_car(PIVOT_LEFT, pivot_speed, pivot_speed, pivot_duration_ms);
                     left_cycles_remaining--;  // Decrement left scan cycles
+                    compensate_duration -= pivot_duration_ms;
                 } else {
                     // Reset right and left scan cycles if both are exhausted
                     right_cycles_remaining = right_scan_cycles;
@@ -498,6 +501,14 @@ void control_motor_on_line_task(void *pvParameters) {
             } else {
                 // Line consistently lost: stop the car
                 printf("Line lost consistently. Stopping the car.\n");
+                printf("[DEBUG] COMPENSATE DURATION: %d\n", compensate_duration);
+                if (compensate_duration > 0) {
+                    move_car(PIVOT_RIGHT, pivot_speed, pivot_speed, compensate_duration);
+                }
+                else if (compensate_duration < 0) {
+                    move_car(PIVOT_LEFT, pivot_speed, pivot_speed, -compensate_duration);
+                }
+
                 move_car(STOP, 0.0f, 0.0f, 0.0f);
                 set_autonomous_running(false);
                 black_line_count = 0;

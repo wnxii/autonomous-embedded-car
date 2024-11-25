@@ -40,7 +40,7 @@ void set_motor_pwm(uint gpio, float duty_cycle, float freq) {
     pwm_set_clkdiv(slice_num, divider);
     pwm_set_wrap(slice_num, 65535);
     
-    printf("Setting PWM on GPIO %d with duty cycle %.2f\n", gpio, duty_cycle);
+    //printf("Setting PWM on GPIO %d with duty cycle %.2f\n", gpio, duty_cycle);
 
     pwm_set_chan_level(slice_num, pwm_gpio_to_channel(gpio), duty_cycle * 65535);
 
@@ -50,7 +50,7 @@ void set_motor_pwm(uint gpio, float duty_cycle, float freq) {
 // PID calculation function
 float calculate_pid(float set_point, float current_value, PIDState* pid_state) {
     float error = set_point - current_value;
-    printf("Calculating PID: Set Point = %.2f, Current Value = %.2f, Error = %.2f\n", set_point, current_value, error);
+    //printf("Calculating PID: Set Point = %.2f, Current Value = %.2f, Error = %.2f\n", set_point, current_value, error);
 
     // Proportional term
     float p_term = (KP * error);
