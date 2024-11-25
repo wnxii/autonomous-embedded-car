@@ -435,14 +435,27 @@ void control_motor_on_line_task(void *pvParameters) {
     int right_cycles_remaining = right_scan_cycles; // Remaining cycles to scan right
     int left_cycles_remaining = left_scan_cycles;   // Remaining cycles to scan left
     bool scanning_right = true;               // Flag to prioritize right scanning first
+    const int black_line_threshold = 100;    // Threshold for black line detection
+    int black_line_count = 0;                 // Counter for black line detection
+    bool is_previous_black_line = false;      // Flag to track previous black line status
 
     while (1) {
         uint16_t current_ir_value = get_line_moving_average_adc(); // Get averaged ADC value
         black_line_detected = current_ir_value >= line_contrast_threshold;
 
-        printf("[DEBUG] Line Following - Black Line Detected: %d \n", black_line_detected);
+        //printf("[DEBUG] Line Following - Black Line Detected: %d \n", black_line_detected);
+
 
         if (black_line_detected) {
+            if (is_previous_black_line) {
+                black_line_count++;
+                if (black_line_count >= black_line_threshold) {
+                    set_autonomous_running(true);
+                    continue;
+                }
+            } else {
+                black_line_count = 0;
+            }
             // Line detected: reset search state and move forward
             printf("Black line detected. Moving forward.\n");
             move_car(FORWARD, forward_speed, forward_speed, 0.0f);
@@ -450,7 +463,11 @@ void control_motor_on_line_task(void *pvParameters) {
             right_cycles_remaining = right_scan_cycles; // Reset right scan cycles
             left_cycles_remaining = left_scan_cycles;   // Reset left scan cycles
             scanning_right = true;          // Start with right scan again
+            
+            
         } else {
+            if (get_autonomous_running() == false)
+                continue;
             // Line not detected: perform pivot search
             if (search_attempts < lost_line_threshold) {
                 if (scanning_right && right_cycles_remaining > 0) {
@@ -480,9 +497,12 @@ void control_motor_on_line_task(void *pvParameters) {
                 // Line consistently lost: stop the car
                 printf("Line lost consistently. Stopping the car.\n");
                 move_car(STOP, 0.0f, 0.0f, 0.0f);
-                break;  // Exit the loop
+                set_autonomous_running(false);
+                black_line_count = 0;
+                continue;  // Exit the loop
             }
         }
+        is_previous_black_line = black_line_detected;
 
         // Small delay for responsive sensor readings
         vTaskDelay(pdMS_TO_TICKS(10));

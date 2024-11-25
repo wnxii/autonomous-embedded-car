@@ -146,6 +146,11 @@ void wifi_task(__unused void *params) {
     }
     printf("[DEBUG] Bound remote socket successfully\n");
 
+    struct netif *netif = netif_default;
+    if (netif != NULL) {
+        printf("Car's Server Address: %s\n", ip4addr_ntoa(netif_ip4_addr(netif)));
+    }
+
     // Set up server address
     struct sockaddr_in dashboard_server_addr = {
         .sin_family = AF_INET,
