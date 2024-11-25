@@ -24,9 +24,9 @@ volatile bool autonomous_running = false; // Global variable to store status of 
 bool white_detected = false;
 
 // Threshold variables
-static uint32_t min_line_threshold = 4095;
-static uint32_t max_line_threshold = 0;
-static uint32_t line_contrast_threshold = 2048;  // Initial threshold (mid-range)
+// static uint32_t min_line_threshold = 4095;
+// static uint32_t max_line_threshold = 0;
+static uint32_t line_contrast_threshold = 1800;  // Initial threshold (mid-range)
 
 
 // Moving average for ADC readings
@@ -44,7 +44,7 @@ float get_line_moving_average_adc() {
     return (uint16_t)(sum / MOVING_AVG_WINDOW); 
 } 
 
-void update_line_threshold(uint16_t adc_reading) {
+/* void update_line_threshold(uint16_t adc_reading) {
     // Update min and max thresholds
     if (adc_reading < min_line_threshold) {
         min_line_threshold = adc_reading;
@@ -57,14 +57,14 @@ void update_line_threshold(uint16_t adc_reading) {
 
     // Recalculate contrast threshold as the average of min and max
     line_contrast_threshold = (min_line_threshold + max_line_threshold) / 2;
-    // snprintf(message, sizeof(message), "[DEBUG] Line Following - Contrast Threshold: %u\n", line_contrast_threshold);
-    // xQueueSend(xServerQueue, &message, portMAX_DELAY);
+    snprintf(message, sizeof(message), "[DEBUG] Line Following - Contrast Threshold: %u\n", line_contrast_threshold);
+    xQueueSend(xServerQueue, &message, portMAX_DELAY);
 
-    // printf("Contrast Threshold: %u\n", line_contrast_threshold);
-}
+    printf("Contrast Threshold: %u\n", line_contrast_threshold);
+} */
 
 // Helper functions to safely access and modify shared variables
-bool get_black_line_detected() {
+/* bool get_black_line_detected() {
     bool detected;
     xSemaphoreTake(black_line_mutex, portMAX_DELAY);
     detected = black_line_detected;
@@ -80,7 +80,7 @@ void set_black_line_detected(bool detected) {
     snprintf(message, sizeof(message), "[DEBUG] Line Following - Black Line Detected: %d \n", black_line_detected);
     xQueueSend(xServerQueue, &message, portMAX_DELAY);
     // printf("Black Line Detected: %d \n", black_line_detected);
-}
+} */
 
 bool get_autonomous_running() {
     bool running;
@@ -96,7 +96,7 @@ void set_autonomous_running(bool running) {
     xSemaphoreGive(autonomous_running_mutex);
 }
 
-void vLineFollowingTask(void *pvParameters) {
+/* void vLineFollowingTask(void *pvParameters) {
     while (1) {
         // adc_select_input(1);
         // uint16_t current_ir_value = adc_read(); // Get averaged ADC value
@@ -114,7 +114,7 @@ void vLineFollowingTask(void *pvParameters) {
         // Delay to allow other tasks to execute and reduce reading frequency
         vTaskDelay(10);  // Adjust delay as needed
     }
-}
+} */
 
 /* void control_motor_on_line_task(void *pvParameters) {
     const int max_turn_speed = 30;  // Maximum speed for turning
@@ -140,12 +140,13 @@ void vLineFollowingTask(void *pvParameters) {
     }
 } */
 
-void control_motor_on_line_task(void *pvParameters) {
+/* void control_motor_on_line_task(void *pvParameters) {
     const int lost_line_threshold = 1000;
     const int max_turn_speed = 20;
     const int forward_speed = 20;
     const int micro_turn_speed = 1;
     int search_attempts = 0;
+    bool black_line_detected = false;
     bool was_on_black_line = false; // New flag to track if we were previously on black line
     char message[100];
     
@@ -168,15 +169,19 @@ void control_motor_on_line_task(void *pvParameters) {
         // printf("Current IR Value: %d \n", current_ir_value);
 
         // Check if a line is detected and update the global flag
-        set_black_line_detected(current_ir_value >= line_contrast_threshold);
+        black_line_detected = current_ir_value >= line_contrast_threshold;
+        snprintf(message, sizeof(message), "[DEBUG] Line Following - Black Line Detected: %d \n", black_line_detected);
+        xQueueSend(xServerQueue, &message, portMAX_DELAY);
+        printf("[DEBUG] Line Following - Black Line Detected: %d \n", black_line_detected);
 
-        if (get_black_line_detected()) {
+        if (black_line_detected) {
             // On black line - move forward
             set_autonomous_running(true);
             search_attempts = 0;
             state = FORWARD;
             was_on_black_line = true; // Set flag when on black line
             move_car(FORWARD, forward_speed, forward_speed, 0);
+            printf("[DEBUG] Line Following - Move Forward Black Line \n");
         } else if (get_autonomous_running()) {
             // White detected
             if (was_on_black_line) {
@@ -201,7 +206,7 @@ void control_motor_on_line_task(void *pvParameters) {
                     // Perform micro left turn
                     move_car(STEER_FORWARD_RIGHT, micro_turn_speed, max_turn_speed, 0.0);
                     if (xTaskGetTickCount() - adjustment_start_time >= pdMS_TO_TICKS(micro_adjust_duration)) {
-                        if (get_black_line_detected()) {
+                        if (black_line_detected) {
                             state = FORWARD;
                         } else {
                             state = COMPENSATE_LEFT;
@@ -214,7 +219,7 @@ void control_motor_on_line_task(void *pvParameters) {
                     // Turn right double the amount
                     move_car(STEER_FORWARD_LEFT, max_turn_speed, micro_turn_speed, 0.0);
                     if (xTaskGetTickCount() - adjustment_start_time >= pdMS_TO_TICKS(left_compensate_duration)) {
-                        if (!get_black_line_detected()) {
+                        if (!black_line_detected) {
                             state = SEARCH_LEFT;
                             search_attempts++;
                         }
@@ -237,7 +242,7 @@ void control_motor_on_line_task(void *pvParameters) {
 
         // vTaskDelay(10);
     }
-}
+} */
 
 
 /* void control_motor_on_line_task(void *pvParameters) {
@@ -308,44 +313,55 @@ void control_motor_on_line_task(void *pvParameters) {
 } */
 
 
-/* void control_motor_on_line_task(void *pvParameters) {
-    const int lost_line_threshold = 1000;  // Number of cycles without line detection before stopping
-    const int forward_speed = 20;          // Default forward speed
-    const int max_turn_speed = 25;         // Maximum speed for turning
-    const int base_turn_speed = 0;         // Base speed for gradual turns
-    int search_attempts = 0;               // Counter for search attempts
+void control_motor_on_line_task(void *pvParameters) {
+    const int lost_line_threshold = 5000;  // Number of cycles without line detection before stopping
+    const float forward_speed = 25.0f;      // Speed for forward motion
+    const float pivot_speed = 0.0f;        // Speed for pivot motion
+    const int pivot_duration_ms = 150;      // Duration for each pivot turn in milliseconds
+    int search_attempts = 0;                // Counter for search attempts
+    bool searching_right = true;            // Keep track of the current pivot direction
 
     while (1) {
-        // Read sensor states
-        bool line_detected = get_black_line_detected();  // Line-following sensor detects black
-        bool barcode_sensor_white = get_barcode_moving_average_adc() < line_contrast_threshold;  // Barcode sensor detects white
-        bool line_following_sensor_white = !line_detected;  // Line-following sensor detects white
+        uint16_t current_ir_value = get_line_moving_average_adc(); // Get averaged ADC value
+        // update_line_threshold(current_ir_value);
+        black_line_detected = current_ir_value >= line_contrast_threshold;
 
-        if (line_detected) {
-            // Line detected by line-following sensor, steer right
-            printf("Line detected. Steering right.\n");
-            move_car(STEER_FORWARD_RIGHT, max_turn_speed, base_turn_speed, 0.0);
-        } else if ((line_following_sensor_white && barcode_sensor_white) || (line_following_sensor_white && scan_started)) {
-            // Both sensors detect white, move forward
-            printf("Both sensors detect white. Moving forward.\n");
-            move_car(FORWARD, forward_speed, forward_speed, 0);
+        printf("[DEBUG] Line Following - Black Line Detected: %d \n", black_line_detected);
+
+        if (black_line_detected) {
+            // Line detected, reset search state and move forward
+            printf("Black line detected. Moving forward.\n");
+            move_car(FORWARD, forward_speed, forward_speed, 0.0f);
+            search_attempts = 0;           // Reset search attempts
+            searching_right = true;        // Reset to default search direction
         } else {
-            // Neither condition satisfied, continue searching
-            printf("Searching for white on both sensors...\n");
-            search_attempts++;
-            move_car(STEER_FORWARD_LEFT, base_turn_speed, max_turn_speed, 0.0);
+            // Line not detected, perform pivot search
+            if (search_attempts < lost_line_threshold) {
+                if (searching_right) {
+                    printf("Searching: Pivot right for %d ms.\n", pivot_duration_ms);
+                    move_car(PIVOT_RIGHT, pivot_speed, pivot_speed, 50);
+                } else {
+                    printf("Searching: Pivot left for %d ms.\n", pivot_duration_ms);
+                    move_car(PIVOT_LEFT, pivot_speed, pivot_speed, 50);
+                }
+
+                // Alternate search direction
+                searching_right = !searching_right;
+
+                // Increment search attempts
+                search_attempts++;
+            } else {
+                // If the line is consistently lost, stop the car
+                printf("Line lost consistently. Stopping the car.\n");
+                move_car(STOP, 0.0f, 0.0f, 0.0f);
+                break;  // Exit the loop
+            }
         }
 
-        // Check if the threshold is reached
-        if (search_attempts >= lost_line_threshold) {
-            printf("Line lost consistently. Stopping the car.\n");
-            move_car(STOP, 0.0, 0.0, 0.0);
-            break;  // Stop the loop
-        }
-
-        vTaskDelay(pdMS_TO_TICKS(5));  // Short delay for responsive sensor readings
+        // vTaskDelay(pdMS_TO_TICKS(10));  // Short delay for responsive sensor readings
     }
-} */
+}
+
 
 // Function to initialize the ADC for Line Following
 void init_line_sensor() {
@@ -357,6 +373,6 @@ void init_line_sensor() {
     adc_gpio_init(LINE_SENSOR_PIN);
 
     // xTaskCreate(vLineFollowingTask, "Line Following Task", configMINIMAL_STACK_SIZE * 4, NULL, tskIDLE_PRIORITY + 3, NULL);
-    xTaskCreate(control_motor_on_line_task, "Control Motor on Line", configMINIMAL_STACK_SIZE * 4, NULL, tskIDLE_PRIORITY + 3, NULL);
+    xTaskCreate(control_motor_on_line_task, "Control Motor on Line", configMINIMAL_STACK_SIZE * 4, NULL, tskIDLE_PRIORITY + 1, NULL);
 }
 

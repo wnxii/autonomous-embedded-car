@@ -12,7 +12,7 @@ void init_line_sensor();
 bool get_autonomous_running();
 
 // Global values to be used in main()
-extern volatile bool black_line_detected; // Flag to indicate if the black line is detected
+// extern volatile bool black_line_detected; // Flag to indicate if the black line is detected
 // extern volatile int stop_running; // Store count of cycles that black line have not been detected.
 extern volatile bool autonomous_running; // Flag to indicate autonomous status when black line is detected
 
