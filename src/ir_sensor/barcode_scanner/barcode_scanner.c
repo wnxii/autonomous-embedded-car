@@ -402,16 +402,6 @@ void vButtonTask(void *pvParameters)
     
 }
 
-// Display Task: Receives messages from queue and prints them
-/* void vDisplayTask(void *pvParameters) {
-    char receivedMessage[200];
-    while (1) {
-        if (xQueueReceive(xServerQueue, &receivedMessage, portMAX_DELAY)) {
-            printf("%s\n", receivedMessage); // Display the message
-        }
-    }
-} */
-
 /**
  * @brief Initializes button GPIO and interrupt
  * 
